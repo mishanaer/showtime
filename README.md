@@ -5,9 +5,9 @@ Record a 10–20 second demo of your app in iOS Simulator. showtime adds a phone
 ## How to use
 
 1. [Install showtime on your Mac](docs/install.md).
-2. Open your iOS app project in an AI agent that can read local files and run commands. Ask it to follow `~/showtime/SKILL.md` to record a demo.
-3. Describe what you want to show. When prompted, choose the whole phone, the top of the screen, or the bottom.
-4. Approve the scenario, then review and approve the storyboard. After recording, the agent gives you the path to the MP4.
+2. Open your app project in your AI agent. For example, ask “Use `~/showtime/SKILL.md` to record how I save a note.”
+3. Choose whether to show the whole phone or just the top or bottom of the screen.
+4. Approve the scenario, then the storyboard. The agent records your demo and tells you where to find the MP4.
 
 ## How it works
 
