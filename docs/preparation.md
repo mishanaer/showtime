@@ -4,7 +4,7 @@ Apply these rules while creating the storyboard, before review. Use actual app f
 
 ## Phone and background
 
-For new videos, use the bundled [phone mockups](../assets/showtime/phones.json): iPhone 17, 17 Pro, 17 Pro Max, 18 Pro or 18 Pro Max, in their catalog colors. Choose one of five [background palettes](../assets/showtime/telegram-gradients.json): Sage, Vivid, Graphite, Pastel or Warm. Night is excluded.
+For new videos, use the bundled [phone mockups](../assets/showtime/phones.json): iPhone 17, 17 Pro, 17 Pro Max, 18 Pro or 18 Pro Max, in their catalog colors. Choose one of five [background palettes](../assets/showtime/gradients.json): Sage, Vivid, Graphite, Pastel or Warm. Night is excluded.
 
 Choose the model, color and background automatically to complement the app and keep the phone clearly visible. Honor explicit user preferences; otherwise, do not ask a separate styling question. Show the choice in the storyboard so the user can change it. Keep it consistent throughout the video and subsequent revisions unless a change is requested.
 

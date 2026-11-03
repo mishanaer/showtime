@@ -65,7 +65,7 @@ def build(destination):
                 "graphite":["#252a33","#31394b","#202633","#414654"],
                 "pastel":["#b4cede","#dfcee5","#bfd6d8","#e3d8e7"],
                 "warm":["#e8ba9f","#dcb4bf","#ead9b1","#d5aba0"]}
-    write_json(art / "telegram-gradients.json", {"schema_version":1,"source":"showtime",
+    write_json(art / "gradients.json", {"schema_version":1,"source":"showtime",
         "gradients":[{"id":key,"label":key.title(),"palette":value} for key,value in palettes.items()]})
     tap = destination / "assets/tap/native"
     tap.mkdir(parents=True)
