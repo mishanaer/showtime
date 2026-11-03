@@ -15,4 +15,4 @@ python3 scripts/showtime_doctor.py
 
 Give `$showtime` your scenario and choose the full phone, top crop, or bottom crop. Approve the storyboard before recording.
 
-[Recording guide](docs/showtime-execution.md) · [Frame preview](examples/stage.png)
+[Recording guide](docs/showtime-execution.md)

@@ -5,9 +5,6 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-import subprocess
-import sys
-import tempfile
 
 from PIL import Image, ImageDraw
 
@@ -90,15 +87,6 @@ def build(destination):
     profile["notes"] = ["Schematic frame sizes follow the configured device geometry.",
                         "Only application text is visible in product videos."]
     write_json(profile_path, profile)
-    with tempfile.TemporaryDirectory() as temporary:
-        subprocess.run([sys.executable, "-B", str(destination / "scripts/compose_pilot.py"),
-                        "--work-dir", temporary, "prepare", "--layout", "full"], check=True,
-                       stdout=subprocess.DEVNULL)
-        examples = destination / "examples"
-        examples.mkdir()
-        with Image.open(Path(temporary) / "technical-preview.png") as preview:
-            preview.thumbnail((800, 800))
-            preview.save(examples / "stage.png")
 
 
 if __name__ == "__main__":
