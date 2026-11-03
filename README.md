@@ -2,17 +2,10 @@
 
 Record a real app interaction in iOS Simulator and turn it into a 10–20 second demo. showtime adds a phone frame and tap indicators, then checks the exported MP4 at 1920 × 1920 and 60 fps.
 
-## Get started
+## Use with Claude Code
 
-Install Python 3.9 or later, FFmpeg, and ffprobe. Recording also requires Xcode, an iOS Simulator, and the AXe input driver.
-
-```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -r requirements.txt
-python3 scripts/showtime_doctor.py
-```
-
-Give `$showtime` your scenario and choose the full phone, top crop, or bottom crop. Approve the storyboard before recording.
+1. [Install showtime on your Mac](docs/install.md).
+2. Open Claude Code in your iOS app project and type `/showtime`.
+3. Describe the interaction you want to show, choose the framing, and approve the storyboard. showtime records the app and exports an MP4.
 
 [Recording guide](docs/showtime-execution.md)

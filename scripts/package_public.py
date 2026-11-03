@@ -22,7 +22,7 @@ def write_json(path, value):
 def build(destination):
     destination.mkdir(parents=True, exist_ok=False)
     sources = ["README.md", "SKILL.md", "requirements.txt", "agents/openai.yaml",
-               "docs/preparation.md", "docs/showtime-execution.md", "docs/review-workflow.md",
+               "docs/install.md", "docs/preparation.md", "docs/showtime-execution.md", "docs/review-workflow.md",
                "docs/visual-acceptance.md", "profiles/telegram-product.json",
                "scripts/simulator/typing-driver.m"]
     for path in sorted((ROOT / "scripts").glob("*.py")):
