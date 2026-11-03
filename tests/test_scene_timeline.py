@@ -72,11 +72,11 @@ class SceneTimelineTests(unittest.TestCase):
             self.assertFalse(3.1 < cut["next_source_in"] < 3.9)
 
     def test_insufficient_tail_fails_without_silent_truncation(self):
-        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "не хватает записанного финала"):
+        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "recording ends too soon"):
             self.plan(duration=5.6)
         # A source tail that cannot supply a complete outward-rounded frame also fails.
         self.observations["steps"][1].update(read_seconds=.305)
-        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "не хватает полного кадра"):
+        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "not enough complete frames"):
             self.plan(duration=5.705)
 
     def test_long_action_is_preserved_even_when_result_appears_before_release(self):
@@ -107,7 +107,7 @@ class SceneTimelineTests(unittest.TestCase):
                     transition_end=5.1, result_ready=5.1, overlays_clear=5.1,
                     read_seconds=0)
                 self.observations["steps"][1][field] = 10
-                with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "не хватает полного кадра"):
+                with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "not enough complete frames"):
                     self.plan(duration=10)
 
     def test_unreviewed_or_wrong_capture_observations_fail(self):
@@ -132,7 +132,7 @@ class SceneTimelineTests(unittest.TestCase):
                     self.plan()
         self.observations["steps"] = original_steps
         self.events[1]["id"] = "open"
-        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "Повторяющийся id"):
+        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "Duplicate action ID"):
             self.plan()
 
     def test_invalid_markers_and_event_order_fail(self):
@@ -148,7 +148,7 @@ class SceneTimelineTests(unittest.TestCase):
                     self.plan()
         self.observations["steps"][0] = original
         self.events.reverse()
-        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "должны идти по времени"):
+        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "timestamps must be in order"):
             self.plan()
 
     def test_invalid_protected_ranges_fail(self):
@@ -173,7 +173,7 @@ class SceneTimelineTests(unittest.TestCase):
         events["events"][0].update(source_start=1, source_end=1)
         observations["steps"][0].update(response_start=1, transition_end=1,
                                           result_ready=1, overlays_clear=1)
-        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "не хватает полного кадра"):
+        with self.assertRaisesRegex(TIMELINE.SceneTimelineError, "not enough complete frames"):
             TIMELINE.plan_scene_intervals(events, observations, 1, SOURCE_HASH)
 
 

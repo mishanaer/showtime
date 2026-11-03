@@ -46,7 +46,7 @@ class ReviewGateError(ValueError):
     """The material has not received a complete, current human approval."""
 
 
-KINDS = {"scenario": "сценария", "prepared-content": "подготовленного контента"}
+KINDS = {"scenario": "scenario", "prepared-content": "prepared content"}
 HASH_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -65,7 +65,7 @@ def story_materials_sha256(manifest):
     This helper computes a digest; load_manifest verifies the declared files.
     """
     if not isinstance(manifest, dict) or not isinstance(manifest.get("content"), dict):
-        raise ReviewGateError("Для хеша материалов требуется manifest с объектом content.")
+        raise ReviewGateError("To hash the materials, supply a manifest with a content object.")
     materials = {**manifest, "content": {
         key: value for key, value in manifest["content"].items() if key != "story_review"
     }}
@@ -79,7 +79,7 @@ def file_sha256(path):
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)
     except OSError as error:
-        raise ReviewGateError(f"Не удалось прочитать проверяемый файл {path}: {error}") from error
+        raise ReviewGateError(f"Could not read file {path}: {error}") from error
     return digest.hexdigest()
 
 
@@ -87,13 +87,13 @@ def _unique_object(pairs):
     result = {}
     for key, value in pairs:
         if key in result:
-            raise ReviewGateError(f"Повторяющееся поле JSON: {key}")
+            raise ReviewGateError(f"Duplicate JSON field: {key}")
         result[key] = value
     return result
 
 
 def _invalid_constant(value):
-    raise ReviewGateError(f"Недопустимое значение JSON: {value}")
+    raise ReviewGateError(f"Invalid JSON value: {value}")
 
 
 def _read_json(path):
@@ -102,9 +102,9 @@ def _read_json(path):
                            object_pairs_hook=_unique_object,
                            parse_constant=_invalid_constant)
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise ReviewGateError(f"Не удалось прочитать JSON {path}: {error}") from error
+        raise ReviewGateError(f"Could not read JSON from {path}: {error}") from error
     if not isinstance(value, dict):
-        raise ReviewGateError(f"В {path} ожидается объект JSON.")
+        raise ReviewGateError(f"Expected a JSON object in {path}.")
     return value
 
 
@@ -118,10 +118,10 @@ def _hash(value):
 
 def _required_text_fields(value, fields, location):
     if not isinstance(value, dict):
-        raise ReviewGateError(f"Требуется объект {location}.")
+        raise ReviewGateError(f"Supply an object for {location}.")
     for field in fields:
         if not _text(value.get(field)):
-            raise ReviewGateError(f"Требуется непустая строка {location}.{field}.")
+            raise ReviewGateError(f"Set {location}.{field} to a nonempty string.")
 
 
 def _validate_scene_content(value, location):
@@ -129,9 +129,9 @@ def _validate_scene_content(value, location):
     for field in ("actors", "supporting_content"):
         entries = value.get(field)
         if not isinstance(entries, list) or not all(_text(entry) for entry in entries):
-            raise ReviewGateError(f"Требуется список непустых строк {location}.{field}.")
+            raise ReviewGateError(f"Set {location}.{field} to a list of nonempty strings.")
     if not value["supporting_content"] and not _text(value.get("intentional_empty_reason")):
-        raise ReviewGateError(f"Пустой {location}.supporting_content требует intentional_empty_reason.")
+        raise ReviewGateError(f"If {location}.supporting_content is empty, provide intentional_empty_reason.")
 
 
 def _validate_story_materials(manifest, path, verified_paths):
@@ -147,32 +147,32 @@ def _validate_story_materials(manifest, path, verified_paths):
     _validate_scene_content(content.get("scene_content"), "content.scene_content")
     storyboard = content.get("storyboard")
     if not isinstance(storyboard, list):
-        raise ReviewGateError("Требуется список content.storyboard с кадрами context, entry, action и result.")
+        raise ReviewGateError("Add context, entry, action, and result frames to content.storyboard.")
     ids, roles = set(), set()
     for frame in storyboard:
         _required_text_fields(frame, ("id", "role", "file", "description"), "content.storyboard[]")
         if frame["id"] in ids:
-            raise ReviewGateError(f"Повторяющийся id в content.storyboard: {frame['id']}.")
+            raise ReviewGateError(f"Duplicate ID in content.storyboard: {frame['id']}.")
         ids.add(frame["id"])
         roles.add(frame["role"])
         resolved = (path.parent / frame["file"]).resolve()
         if resolved not in verified_paths:
-            raise ReviewGateError(f"Кадр storyboard не объявлен в проверенном files: {frame['file']}.")
+            raise ReviewGateError(f"Storyboard frame is not listed in files: {frame['file']}.")
     missing_roles = {"context", "entry", "action", "result"} - roles
     if missing_roles:
-        raise ReviewGateError(f"В content.storyboard отсутствуют роли: {', '.join(sorted(missing_roles))}.")
+        raise ReviewGateError(f"Missing storyboard roles: {', '.join(sorted(missing_roles))}.")
 
     review = content.get("story_review")
     _required_text_fields(review, ("reviewer", "reference"), "content.story_review")
     if review.get("status") != "passed" or review.get("basis") != "frames_only":
-        raise ReviewGateError("content.story_review требует status: passed и basis: frames_only.")
+        raise ReviewGateError("Set content.story_review status to passed and basis to frames_only.")
     _required_text_fields(review.get("answers"),
                           ("context", "entry_point", "action", "result", "believability", "continuity"),
                           "content.story_review.answers")
     if not _hash(review.get("materials_sha256")):
-        raise ReviewGateError("content.story_review.materials_sha256 должен быть SHA-256 из 64 строчных hex-символов.")
+        raise ReviewGateError("Set content.story_review.materials_sha256 to a 64-character lowercase SHA-256 hash.")
     if review["materials_sha256"] != story_materials_sha256(manifest):
-        raise ReviewGateError("Визуальная рецензия устарела: story_review.materials_sha256 не совпадает с текущими материалами. Повторно оцените актуальные кадры.")
+        raise ReviewGateError("The frame review is outdated. Review the current frames and update story_review.materials_sha256.")
 
 
 def load_manifest(path, expected_kind=None):
@@ -181,29 +181,29 @@ def load_manifest(path, expected_kind=None):
     manifest = _read_json(path)
     kind = manifest.get("kind")
     if type(manifest.get("schema_version")) is not int or manifest["schema_version"] not in (1, 2):
-        raise ReviewGateError(f"В {path} требуется schema_version: 1 или 2.")
+        raise ReviewGateError(f"Use schema_version 1 or 2 in {path}.")
     if kind not in KINDS or (expected_kind is not None and kind != expected_kind):
-        raise ReviewGateError(f"В {path} неверный kind: ожидается {expected_kind or 'scenario / prepared-content'}.")
+        raise ReviewGateError(f"Wrong kind in {path}. Expected {expected_kind or 'scenario / prepared-content'}.")
     if not _text(manifest.get("scenario_id")):
-        raise ReviewGateError(f"В {path} требуется непустой scenario_id.")
+        raise ReviewGateError(f"Add a nonempty scenario_id to {path}.")
     if not isinstance(manifest.get("content"), dict) or not manifest["content"]:
-        raise ReviewGateError(f"В {path} требуется непустой объект content с материалами для согласования.")
+        raise ReviewGateError(f"Add the materials for approval to a nonempty content object in {path}.")
     files = manifest.get("files")
     if not isinstance(files, list) or (kind == "prepared-content" and not files):
-        raise ReviewGateError(f"В {path} требуется files; для контента нужен хотя бы один проверяемый файл.")
+        raise ReviewGateError(f"Add files to {path}. Prepared content requires at least one file to verify.")
     if kind == "prepared-content" and not _hash(manifest.get("scenario_sha256")):
-        raise ReviewGateError(f"В {path} требуется scenario_sha256 согласуемого сценария.")
+        raise ReviewGateError(f"Set scenario_sha256 in {path} to the hash of the scenario under review.")
     verified_files, seen = [], set()
     for entry in files:
         if not isinstance(entry, dict) or not _text(entry.get("path")) or not _hash(entry.get("sha256")):
-            raise ReviewGateError(f"В {path} каждая запись files должна содержать path и SHA-256 из 64 строчных hex-символов.")
+            raise ReviewGateError(f"Each entry in {path} needs a path and a 64-character lowercase SHA-256 hash.")
         resolved = (path.parent / entry["path"]).resolve()
         if resolved in seen:
-            raise ReviewGateError(f"В {path} один файл указан повторно: {entry['path']}.")
+            raise ReviewGateError(f"Duplicate file in {path}: {entry['path']}.")
         seen.add(resolved)
         actual = file_sha256(resolved)
         if actual != entry["sha256"]:
-            raise ReviewGateError(f"Файл изменился: {resolved}. Обновите manifest и снова покажите материалы человеку для согласования.")
+            raise ReviewGateError(f"File changed: {resolved}. Update the manifest and submit the revised materials for approval.")
         verified_files.append({"path": entry["path"], "sha256": actual})
     if manifest["schema_version"] == 2:
         _validate_story_materials(manifest, path, seen)
@@ -213,12 +213,12 @@ def load_manifest(path, expected_kind=None):
 
 def _validate_decision(decision, manifest_sha256):
     if decision.get("decision") != "approved":
-        raise ReviewGateError("Нет явного решения человека: требуется decision: approved; отказ и ожидание не разрешают продолжать.")
+        raise ReviewGateError("An explicit approval is required. Set decision to approved only after approval.")
     for field in ("source", "reference", "quote"):
         if not _text(decision.get(field)):
-            raise ReviewGateError(f"В решении человека требуется непустое поле {field}; укажите источник, ссылку и точную цитату согласия.")
+            raise ReviewGateError(f"The approval decision needs a nonempty {field}. Include the source, reference, and exact approval quote.")
     if decision.get("manifest_sha256") != manifest_sha256:
-        raise ReviewGateError("Решение человека относится к другой версии материалов. Покажите актуальные материалы и получите новое согласование.")
+        raise ReviewGateError("The decision refers to a different version of the materials. Show the current version and get approval.")
 
 
 def _receipt_path(approval_dir, kind):
@@ -235,7 +235,7 @@ def _validate_stored_receipt(receipt, kind, path):
                 not _hash(entry.get("sha256")) for entry in receipt.get("files", [])) or
             (kind == "scenario" and receipt.get("scenario_approval_sha256") is not None) or
             (kind == "prepared-content" and not _hash(receipt.get("scenario_approval_sha256")))):
-        raise ReviewGateError(f"Неполная запись согласования: {path}. Существующий файл сохранён без изменений.")
+        raise ReviewGateError(f"Incomplete approval record: {path}. The existing file was preserved.")
     _validate_decision(receipt["human_decision"], receipt["manifest_sha256"])
 
 
@@ -244,7 +244,7 @@ def _check_receipt(snapshot, approval_dir, scenario_receipt_sha256=None):
     kind = manifest["kind"]
     path = _receipt_path(approval_dir, kind)
     if not path.is_file():
-        raise ReviewGateError(f"Нет согласования {KINDS[kind]}: {path}. Покажите материалы человеку и зафиксируйте его явное решение.")
+        raise ReviewGateError(f"Missing {KINDS[kind]} approval: {path}. Show the materials and record the approval decision.")
     receipt = _read_json(path)
     expected = {"schema_version": 1, "kind": kind,
                 "scenario_id": manifest["scenario_id"],
@@ -252,9 +252,9 @@ def _check_receipt(snapshot, approval_dir, scenario_receipt_sha256=None):
                 "files": snapshot["files"],
                 "scenario_approval_sha256": scenario_receipt_sha256}
     if any(receipt.get(key) != value for key, value in expected.items()):
-        raise ReviewGateError(f"Согласование {KINDS[kind]} устарело или неполно: {path}. Требуется новое явное решение по актуальным материалам.")
+        raise ReviewGateError(f"The {KINDS[kind]} approval is outdated or incomplete: {path}. Get approval for the current materials.")
     if not _text(receipt.get("approved_at")) or not isinstance(receipt.get("human_decision"), dict):
-        raise ReviewGateError(f"Неполная запись согласования: {path}.")
+        raise ReviewGateError(f"Incomplete approval record: {path}.")
     _validate_decision(receipt["human_decision"], snapshot["manifest_sha256"])
     return canonical_sha256(receipt)
 
@@ -264,10 +264,10 @@ def _prepared_snapshot(path, scenario):
     prepared = load_manifest(path, "prepared-content")
     manifest = prepared["manifest"]
     if manifest["schema_version"] != 2 or scenario["manifest"]["schema_version"] != 2:
-        raise ReviewGateError("Новая запись и согласование подготовленного контента требуют schema_version: 2 у обоих manifest; v1 доступен для чтения и исторических fingerprint.")
+        raise ReviewGateError("Use schema_version 2 in both manifests for a new recording or materials approval. Version 1 supports reading and fingerprinting.")
     if (manifest["scenario_id"] != scenario["manifest"]["scenario_id"] or
             manifest["scenario_sha256"] != scenario["manifest_sha256"]):
-        raise ReviewGateError("Подготовленный контент относится к другой версии сценария. Сначала согласуйте актуальный сценарий, затем обновите и покажите контент.")
+        raise ReviewGateError("The prepared content refers to a different scenario version. Get the current scenario approved, then update the materials for review.")
     from check_preparation import check_preparation, MEDIA
     try:
         check_preparation(path)
@@ -275,15 +275,15 @@ def _prepared_snapshot(path, scenario):
         raise ReviewGateError(str(error)) from error
     profile = manifest["content"]["preparation"].get("profile")
     if profile not in prepared["files"] or not isinstance(profile, dict):
-        raise ReviewGateError("В preparation.profile нужен согласованный профиль из files")
+        raise ReviewGateError("Set preparation.profile to the approved profile entry in files")
     from compose_pilot import load_config
     config = load_config(path.parent / profile["path"])
     shots = manifest["content"]["preparation"]["framing"]
     if not all((shot["layout"], shot["device_id"]) == (config["layout"], config["device"]["id"])
                for shot in shots):
-        raise ReviewGateError("Кадрирование и телефон в профиле не совпадают с раскадровкой")
+        raise ReviewGateError("The profile framing or phone differs from the storyboard")
     if any(Path(frame["file"]).suffix.lower() not in MEDIA for frame in manifest["content"]["storyboard"]):
-        raise ReviewGateError("Раскадровка требует файлов изображений или видео")
+        raise ReviewGateError("Storyboard frames must be images or videos")
     return prepared
 
 
@@ -291,12 +291,12 @@ def _correction_context(scenario, prepared, approval_dir, scenario_receipt):
     """Validate the original approval record, not changed former asset bytes."""
     path = _receipt_path(approval_dir, "prepared-content")
     if not path.is_file():
-        raise ReviewGateError(f"Правка требует исходного согласования подготовленного контента: {path}.")
+        raise ReviewGateError(f"The revision needs the original prepared content approval: {path}.")
     base = _read_json(path)
     _validate_stored_receipt(base, "prepared-content", path)
     if (base["scenario_id"] != scenario["manifest"]["scenario_id"] or
             base["scenario_approval_sha256"] != scenario_receipt):
-        raise ReviewGateError("Исходное согласование контента относится к другому сценарию или его решению; правка не заменяет новое согласование сценария.")
+        raise ReviewGateError("The original content approval refers to a different scenario or decision. Get approval for the current scenario first.")
     return {"scenario_approval_sha256": scenario_receipt,
             "base_prepared_approval_sha256": canonical_sha256(base),
             "target_prepared_sha256": prepared["manifest_sha256"]}
@@ -304,13 +304,13 @@ def _correction_context(scenario, prepared, approval_dir, scenario_receipt):
 
 def _validate_correction_decision(decision, expected):
     if decision.get("decision") != "correction_requested":
-        raise ReviewGateError("Требуется явное поручение правки: decision: correction_requested.")
+        raise ReviewGateError("Record an explicit revision request with decision: correction_requested.")
     for key, value in expected.items():
         if decision.get(key) != value:
-            raise ReviewGateError(f"Поручение правки не соответствует текущим материалам или исходному согласованию: {key}.")
+            raise ReviewGateError(f"The revision request does not match the current materials or original approval: {key}.")
     instructions = decision.get("instructions")
     if not isinstance(instructions, list) or not instructions:
-        raise ReviewGateError("Поручение правки требует непустой список instructions с реальными сообщениями пользователя.")
+        raise ReviewGateError("The revision request needs a nonempty instructions list with the actual request messages.")
     for instruction in instructions:
         _required_text_fields(instruction, ("source", "reference", "quote", "scope"), "instructions[]")
 
@@ -320,7 +320,7 @@ def check_review_gate(scenario_manifest, prepared_manifest, approval_dir, revisi
     scenario = load_manifest(scenario_manifest, "scenario")
     scenario_receipt = _check_receipt(scenario, approval_dir)
     if revision_file is not None and prepared_manifest is None:
-        raise ReviewGateError("Проверка правки требует --prepared-content с исправленными материалами.")
+        raise ReviewGateError("Use --prepared-content with the revised materials to check a revision.")
     result = {"approved": True, "stage": "preparation",
               "scenario_sha256": scenario["manifest_sha256"],
               "scenario_approval_sha256": scenario_receipt,
@@ -338,7 +338,7 @@ def check_review_gate(scenario_manifest, prepared_manifest, approval_dir, revisi
             if (revision.get("schema_version") != 1 or revision.get("kind") != "requested-correction" or
                     revision.get("scenario_id") != scenario["manifest"]["scenario_id"] or
                     revision.get("files") != prepared["files"] or not _text(revision.get("recorded_at"))):
-                raise ReviewGateError("Файл порученной правки неполон или относится к другим материалам.")
+                raise ReviewGateError("The revision record is incomplete or refers to different materials.")
             result.update(authorization_kind="requested_correction", target_user_reviewed=False,
                           correction_scope_automatically_verified=False,
                           base_prepared_approval_sha256=expected["base_prepared_approval_sha256"],
@@ -370,7 +370,7 @@ def authorize_correction(scenario_manifest, prepared_manifest, approval_dir, dec
                 {key: value for key, value in existing.items() if key != "recorded_at"} ==
                 {key: value for key, value in authorization.items() if key != "recorded_at"}):
             return result
-        raise ReviewGateError(f"Файл правки уже существует с другим содержимым: {destination}. Выберите новый путь; исходный файл не изменён.")
+        raise ReviewGateError(f"A different revision already exists at {destination}. Choose a new path.")
     temporary = None
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -381,7 +381,7 @@ def authorize_correction(scenario_manifest, prepared_manifest, approval_dir, dec
             stream.write("\n")
         os.link(temporary, destination)
     except OSError as error:
-        raise ReviewGateError(f"Не удалось сохранить поручение правки {destination}: {error}") from error
+        raise ReviewGateError(f"Could not save the revision request to {destination}: {error}") from error
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
@@ -432,7 +432,7 @@ def _approve_locked(scenario_manifest, prepared_manifest, approval_dir, decision
                     stream.write(original)
             except FileExistsError:
                 if archive.read_bytes() != original:
-                    raise ReviewGateError(f"Архив согласования отличается от текущей записи: {archive}. Файлы сохранены без изменений.")
+                    raise ReviewGateError(f"The archived approval differs from the current record: {archive}. Both files were preserved.")
         destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=destination.parent,
                                          prefix=".review-", suffix=".tmp", delete=False) as stream:
@@ -441,7 +441,7 @@ def _approve_locked(scenario_manifest, prepared_manifest, approval_dir, decision
             stream.write("\n")
         os.replace(temporary, destination)
     except OSError as error:
-        raise ReviewGateError(f"Не удалось сохранить согласование {destination}: {error}") from error
+        raise ReviewGateError(f"Could not save the approval to {destination}: {error}") from error
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
@@ -451,21 +451,21 @@ def _approve_locked(scenario_manifest, prepared_manifest, approval_dir, decision
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    fingerprint = sub.add_parser("fingerprint", help="Проверить файлы и вывести хеш manifest без согласования")
+    fingerprint = sub.add_parser("fingerprint", help="Verify the files and print the manifest hash without granting approval")
     fingerprint.add_argument("--manifest", type=Path, required=True)
     for name in ("check", "approve", "authorize-correction"):
         command = sub.add_parser(name)
         command.add_argument("--scenario", type=Path, required=True)
         command.add_argument("--prepared-content", type=Path, required=name == "authorize-correction",
-                             help="Обязательно перед новой записью; без него проверяется только подготовка")
+                             help="Required before a new final recording. Omit to check scenario approval only.")
         command.add_argument("--approval-dir", type=Path, required=True)
         if name in ("approve", "authorize-correction"):
             command.add_argument("--decision-file", type=Path, required=True,
-                                 help="Ссылка и цитата явного решения человека о показанных материалах")
+                                 help="Source reference and exact quote approving the materials shown")
         if name == "check":
-            command.add_argument("--revision-file", type=Path, help="Порученная правка после двух исходных согласований")
+            command.add_argument("--revision-file", type=Path, help="Revision requested after both original approvals")
         elif name == "authorize-correction":
-            command.add_argument("--output", type=Path, required=True, help="Новый файл разрешения на конкретную правку")
+            command.add_argument("--output", type=Path, required=True, help="New file for the revision authorization")
     args = parser.parse_args(argv)
     try:
         if args.command == "fingerprint":
@@ -482,7 +482,7 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except ReviewGateError as error:
-        print(f"Согласование Showtime: {error}", file=sys.stderr)
+        print(f"showtime approval: {error}", file=sys.stderr)
         return 2
 
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "name": "Showtime Telegram product - portable",
+  "name": "showtime Telegram product - portable",
   "canvas": {
     "width": 1920,
     "height": 1920,
@@ -57,7 +57,7 @@
       "#bfd6d8",
       "#e3d8e7"
     ],
-    "palette_note": "Showtime pastel",
+    "palette_note": "showtime pastel",
     "pattern": "../assets/showtime/pattern.png",
     "pattern_name": "Dot grid",
     "pattern_opacity": 0.06,
@@ -92,7 +92,7 @@
     "label_height": 120,
     "labels": [
       "Telegram original",
-      "Showtime app recording"
+      "showtime app recording"
     ]
   },
   "notes": [

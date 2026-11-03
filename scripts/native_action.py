@@ -75,14 +75,14 @@ def prepare_journal(clock_path, clock, journal=None, viewport=None):
 def character_steps(text, delay):
     """Build AXe batch steps, never shell code or one process per character."""
     if not text:
-        raise ValueError("Файл текста пуст: нужен текст для посимвольного ввода")
+        raise ValueError("The text file is empty. Add the text to type.")
     if any(not 32 <= ord(character) <= 126 for character in text):
-        raise ValueError("AXe type поддерживает только печатный US ASCII, включая пробел; "
-                         "Unicode, переводы строк и табуляция не поддерживаются. "
-                         "Используйте посимвольный ввод в приложении или другой проверенный драйвер; "
-                         "не заменяйте его вставкой paste.")
+        raise ValueError("AXe type accepts printable US ASCII, including spaces. "
+                         "Unicode, line breaks, and tabs require a different input method. "
+                         "Use character-by-character input in the app or a verified driver "
+                         "that types each character.")
     if type(delay) not in (int, float) or not math.isfinite(delay) or delay <= 0:
-        raise ValueError("Пауза между символами должна быть положительным конечным числом секунд")
+        raise ValueError("The delay between characters must be a positive finite number of seconds")
     steps = []
     for index, character in enumerate(text):
         if index:
@@ -112,7 +112,7 @@ def main():
     text = ""
     if args.type == "type_text":
         if args.text_file is None or args.step is not None or args.point is not None:
-            parser.error("type_text требует --text-file и не принимает --step или --point")
+            parser.error("Use --text-file for type_text and omit --step and --point")
         try:
             text = args.text_file.read_text(encoding="utf-8")
             steps = character_steps(text, args.character_delay)
@@ -120,21 +120,21 @@ def main():
             parser.error(str(error))
     else:
         if not args.step or args.text_file is not None:
-            parser.error("Для этого действия требуется --step; --text-file доступен только для type_text")
+            parser.error("This action needs --step. Use --text-file only with type_text.")
         steps = [args.step]
     if args.tap_style == "simulator":
         if args.type != "tap":
-            parser.error("Режим simulator разрешён только для --type tap")
+            parser.error("Use simulator mode only with --type tap")
         try:
             tokens = shlex.split(args.step)
         except ValueError as error:
-            parser.error("Некорректная AXe-команда: " + str(error))
+            parser.error("Invalid AXe command: " + str(error))
         if not tokens or tokens[0] != "tap":
-            parser.error("Режим simulator требует AXe-команду tap")
+            parser.error("Simulator mode requires an AXe tap command")
     if args.type == "long_press":
         tokens = shlex.split(args.step)
         if not tokens or tokens[0] != "touch" or "--down" not in tokens or "--up" not in tokens:
-            parser.error("Удержание должно быть одной touch-командой с --down и --up")
+            parser.error("Use one touch command with --down and --up for a hold")
     with file_lock(args.journal.with_suffix(".lock")):
         dispatch_action(args, steps, parser, text)
 
@@ -155,13 +155,13 @@ def dispatch_action(args, steps, parser, text):
         expected = "tap" if args.type == "tap" else "touch"
         try:
             if tokens[0] != expected or tokens.count("-x") != 1 or tokens.count("-y") != 1:
-                raise ValueError("Укажите одну пару координат -x и -y в команде касания")
+                raise ValueError("Supply one pair of -x and -y coordinates for the touch")
             point = [float(tokens[tokens.index(axis) + 1]) for axis in ("-x", "-y")]
             bounds = journal["coordinate_space"]
             if not (0 <= point[0] < bounds["width"] and 0 <= point[1] < bounds["height"]):
-                raise ValueError("Касание находится вне экрана")
+                raise ValueError("The touch falls outside the screen")
             if args.point is not None and point != args.point:
-                raise ValueError("Координаты кольца отличаются от координат касания")
+                raise ValueError("The ring coordinates differ from the touch coordinates")
             args.point = point
         except (ValueError, IndexError) as error:
             parser.error(str(error))
@@ -196,7 +196,7 @@ def dispatch_action(args, steps, parser, text):
     if args.type == "long_press":
         if (len(dispatch) != 2 or len(completed) != 2 or dispatch[1] <= dispatch[0]
                 or not dispatch[0] <= completed[0] <= dispatch[1] <= completed[1]):
-            raise SystemExit("Не удалось подтвердить отправку и выполнение down/up; удержание не принято")
+            raise SystemExit("The driver did not confirm both down and up. The hold was rejected.")
         event.update(contact_start=(dispatch[0]-clock["ready_ms"])/1000,
                      contact_end=(dispatch[1]-clock["ready_ms"])/1000,
                      contact_timing="hid_dispatch_estimate")

@@ -49,7 +49,7 @@ class CompositionPolicyTests(unittest.TestCase):
         screen = compositor.geometry(config)["screen"]
         sw, sh = screen[2:]
         # Bottom composer buttons from a normal 402x874 capture must not vanish.
-        with self.assertRaisesRegex(ValueError, "скрывает действие send"):
+        with self.assertRaisesRegex(ValueError, "hides action send"):
             compositor.validate_visible_targets(
                 [{"id": "send", "x": 360, "y": 840}], (402, 874),
                 (sw, sh), (0, 0), screen, (1920, 1920))

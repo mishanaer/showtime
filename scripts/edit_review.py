@@ -61,13 +61,13 @@ def _plan_evidence(intervals, observations, frame_count, fps):
 
     for i, (first, last) in enumerate(intervals):
         groups.append([
-            evidence("interval_start", first, f"Интервал {i + 1}: начало", interval_index=i),
-            evidence("interval_end", last - 1, f"Интервал {i + 1}: конец", interval_index=i),
+            evidence("interval_start", first, f"Interval {i + 1} start", interval_index=i),
+            evidence("interval_end", last - 1, f"Interval {i + 1} end", interval_index=i),
         ])
     for i in range(len(intervals) - 1):
         groups.append([
-            evidence("cut_left", intervals[i][1] - 1, f"Склейка {i + 1}: ДО", cut_index=i),
-            evidence("cut_right", intervals[i + 1][0], f"Склейка {i + 1}: ПОСЛЕ", cut_index=i),
+            evidence("cut_left", intervals[i][1] - 1, f"Cut {i + 1} before", cut_index=i),
+            evidence("cut_right", intervals[i + 1][0], f"Cut {i + 1} after", cut_index=i),
         ])
     seen = set()
     for step in steps:
@@ -78,8 +78,8 @@ def _plan_evidence(intervals, observations, frame_count, fps):
             raise ValueError("Observation event_id values must be nonempty and unique")
         seen.add(event_id)
         group = []
-        for field, label in (("result_ready", "Результат по наблюдению"),
-                             ("overlays_clear", "Без подсказок по наблюдению")):
+        for field, label in (("result_ready", "Result visible"),
+                             ("overlays_clear", "Overlays clear")):
             seconds = _number(step.get(field), f"{event_id}.{field}")
             # Readiness means at or after the observed time, never just before.
             frame = math.ceil(seconds * fps - 1e-9)
@@ -89,10 +89,10 @@ def _plan_evidence(intervals, observations, frame_count, fps):
                                   event_id=event_id, observation_seconds=seconds))
         groups.append(group)
     groups.append([
-        evidence("loop_end", intervals[-1][1] - 1, f"{_LOOP_NOTE}: конец"),
-        evidence("loop_start", intervals[0][0], f"{_LOOP_NOTE}: начало"),
+        evidence("loop_end", intervals[-1][1] - 1, f"{_LOOP_NOTE} end"),
+        evidence("loop_start", intervals[0][0], f"{_LOOP_NOTE} start"),
     ])
-    groups.append([evidence("final_frame", intervals[-1][1] - 1, "Финальный кадр монтажа")])
+    groups.append([evidence("final_frame", intervals[-1][1] - 1, "Last frame of the edit")])
     return groups
 
 
@@ -178,9 +178,9 @@ def _sheet(path, items, page_number, page_count, fps):
     rows = math.ceil(len(items) / _COLUMNS)
     sheet = Image.new("RGB", (_COLUMNS * _CELL_WIDTH, 76 + rows * cell_height), "#17191d")
     draw = ImageDraw.Draw(sheet)
-    draw.text((12, 10), f"Монтаж: требуется визуальная проверка · страница {page_number}/{page_count}",
+    draw.text((12, 10), f"Edit review | Page {page_number}/{page_count}",
               fill="white", font=font)
-    draw.text((12, 39), f"Кадры монтажной сетки {fps:g} fps. Время: PTS подготовленного видео.",
+    draw.text((12, 39), f"Edit timeline at {fps:g} fps. Times come from the prepared video.",
               fill="#c6cad3", font=small)
     for index, (item, lines) in enumerate(zip(items, labels)):
         x, y = (index % _COLUMNS) * _CELL_WIDTH, 76 + (index // _COLUMNS) * cell_height
@@ -193,10 +193,10 @@ def _sheet(path, items, page_number, page_count, fps):
             draw.text((x + 10, text_y), line, fill="white", font=font)
             text_y += 22
         draw.text((x + 10, text_y + 3),
-                  f"Кадр {item['source_frame']} · PTS {item['source_seconds']:.3f} с",
+                  f"Frame {item['source_frame']} | {item['source_seconds']:.3f} s",
                   fill="#c6cad3", font=small)
         if not item["retained"]:
-            draw.text((x + 10, text_y + 23), "Этот кадр не входит в монтаж", fill="#ffce85", font=small)
+            draw.text((x + 10, text_y + 23), "This frame is outside the edit", fill="#ffce85", font=small)
     sheet.save(path, quality=93)
 
 
@@ -265,12 +265,12 @@ def build_edit_review(capture: Path, intervals, observations: dict, output_dir: 
         "report": str(report_path), "evidence": evidence,
         "loop_seam": {"status": "needs_visual_review", "note": _LOOP_NOTE,
                       "end_frame": intervals[-1][1] - 1, "start_frame": intervals[0][0]},
-        "manual_review_required": "Просмотреть движение вокруг каждой склейки и переход конца в начало; статичные пары не подтверждают плавность.",
+        "manual_review_required": "Watch each cut and the return to the opening frame to check continuity.",
         "limitations": [
-            "Пакет не подтверждает визуальную правильность и не оценивает частоту исходного движения.",
-            "Проверяются кадры нормализованного видео; повторы из-за исходного VFR допустимы.",
-            "Кадры result_ready/overlays_clear выбраны по наблюдениям, а не распознаны автоматически.",
-            "Пара кадров на склейке не заменяет просмотр движения и непрерывности анимации.",
+            "Review the video to judge visual quality and source motion.",
+            "These frames come from the normalized video. A variable-rate source can produce repeated frames.",
+            "The result_ready and overlays_clear frames come from the reviewer's observations.",
+            "Watch the animation across each cut to check for jumps.",
         ],
     }
     report_path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

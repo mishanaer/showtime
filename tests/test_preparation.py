@@ -97,12 +97,12 @@ class PreparationTests(unittest.TestCase):
         wrong = self.file("small.json", b'{"device":[488,18,944,1930],"screen":[539,67,842,1832]}')
         self.manifest["files"].append(wrong)
         self.preparation["framing"][0]["geometry"] = wrong
-        with self.assertRaisesRegex(ValueError, "геометрия"):
+        with self.assertRaisesRegex(ValueError, "geometry"):
             self.check()
 
     def test_changed_file_bytes_are_rejected(self):
         (self.root / self.video["path"]).write_bytes(b"changed after preparation")
-        with self.assertRaisesRegex(ValueError, "изменился"):
+        with self.assertRaisesRegex(ValueError, "changed"):
             self.check()
 
     def test_every_check_is_required(self):
@@ -110,7 +110,7 @@ class PreparationTests(unittest.TestCase):
         for name in PREPARATION.CHECKS:
             self.preparation["checks"] = deepcopy(original)
             del self.preparation["checks"][name]
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "пять"):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "five"):
                 self.check()
 
     def test_not_applicable_is_allowed_only_for_absent_keyboard_or_typing(self):

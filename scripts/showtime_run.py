@@ -25,22 +25,22 @@ def _text(value):
 
 def _validate(run):
     if not isinstance(run, dict) or type(run.get("schema_version")) is not int or run["schema_version"] != 1:
-        raise ValueError("run.json должен быть объектом с schema_version: 1")
+        raise ValueError("Use a JSON object with schema_version 1 for run.json")
     for key in ("id", "app_path", "next_step"):
         if not _text(run.get(key)):
-            raise ValueError(f"run.json: требуется непустая строка {key}")
+            raise ValueError(f"Set {key} in run.json to a nonempty string")
     if not Path(run["app_path"]).is_absolute():
-        raise ValueError("run.json: app_path должен быть абсолютным путём")
+        raise ValueError("Use an absolute path for app_path in run.json")
     if "simulator" not in run or (run["simulator"] is not None and not _text(run["simulator"])):
-        raise ValueError("run.json: simulator должен быть строкой или null")
+        raise ValueError("Set simulator in run.json to a string or null")
     if run.get("status") not in STATUSES:
-        raise ValueError("run.json: неизвестный status")
+        raise ValueError("Unknown status in run.json")
     artifacts = run.get("artifacts")
     if not isinstance(artifacts, dict):
-        raise ValueError("run.json: artifacts должен быть объектом")
+        raise ValueError("Set artifacts in run.json to an object")
     for name, path in artifacts.items():
         if not _text(name) or not _text(path) or "\x00" in path or Path(path).is_absolute():
-            raise ValueError("run.json: artifacts содержит неверное имя или относительный путь")
+            raise ValueError("Check the artifact name and relative path in run.json")
     return run
 
 
@@ -49,9 +49,9 @@ def _load(run_dir):
     try:
         return _validate(json.loads(path.read_text(encoding="utf-8")))
     except FileNotFoundError as error:
-        raise ValueError(f"Нет {path}; сначала выполните init") from error
+        raise ValueError(f"Run init first to create {path}") from error
     except (json.JSONDecodeError, UnicodeError) as error:
-        raise ValueError(f"Некорректный JSON в {path}: {error}") from error
+        raise ValueError(f"Invalid JSON in {path}: {error}") from error
 
 
 def _save(run_dir, run, create=False):
@@ -68,7 +68,7 @@ def _save(run_dir, run, create=False):
             try:
                 os.link(temporary, destination)
             except FileExistsError as error:
-                raise ValueError(f"{destination} уже существует; init не перезаписывает запуск") from error
+                raise ValueError(f"{destination} already exists. Run init in a new directory.") from error
         else:
             os.replace(temporary, destination)
     finally:
@@ -80,7 +80,7 @@ def init_run(run_dir, app_path, simulator=None):
     run_dir = Path(run_dir).resolve()
     app_path = Path(app_path).expanduser().resolve(strict=True)
     if not app_path.is_dir():
-        raise ValueError(f"Путь приложения должен быть каталогом: {app_path}")
+        raise ValueError(f"Choose an app directory: {app_path}")
     run = _validate({
         "schema_version": 1,
         "id": str(uuid.uuid4()),
@@ -107,13 +107,13 @@ def _note_locked(run_dir, status, next_step, artifacts):
     for item in artifacts:
         name, separator, path = item.partition("=")
         if not separator or not _text(name) or not _text(path):
-            raise ValueError("Артефакт задаётся как NAME=PATH")
+            raise ValueError("Specify an artifact as NAME=PATH")
         target = Path(path).expanduser()
         if not target.is_absolute():
             target = run_dir / target
         target = target.resolve(strict=True)
         if not target.is_file():
-            raise ValueError(f"Артефакт должен быть файлом: {target}")
+            raise ValueError(f"Choose an existing file for this artifact: {target}")
         run["artifacts"][name] = os.path.relpath(target, run_dir)
     _validate(run)
     _save(run_dir, run)
@@ -133,17 +133,17 @@ def status_run(run_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    init = commands.add_parser("init", help="Создать отдельный запуск без перезаписи")
+    init = commands.add_parser("init", help="Create a new run")
     init.add_argument("--run-dir", required=True, type=Path)
     init.add_argument("--app-path", required=True, type=Path)
     init.add_argument("--simulator")
-    note = commands.add_parser("note", help="Сохранить прогресс; не выдаёт допуск к записи")
+    note = commands.add_parser("note", help="Save progress without approving a recording")
     note.add_argument("--run-dir", required=True, type=Path)
     note.add_argument("--status", required=True, choices=STATUSES)
     note.add_argument("--next-step", required=True)
     note.add_argument("--artifact", action="append", default=[], metavar="NAME=PATH",
-                      help="Существующий файл; относительный путь от --run-dir; можно повторять")
-    status = commands.add_parser("status", help="Прочитать прогресс и наличие файлов")
+                      help="Existing file relative to --run-dir. Repeat to add more files.")
+    status = commands.add_parser("status", help="Show run progress and check which files exist")
     status.add_argument("--run-dir", required=True, type=Path)
     args = parser.parse_args()
     try:

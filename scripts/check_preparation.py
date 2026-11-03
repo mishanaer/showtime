@@ -30,7 +30,7 @@ def _file_entry(entry):
     if (not isinstance(entry, dict) or not _text(entry.get("path"))
             or "\x00" in entry["path"] or not isinstance(entry.get("sha256"), str)
             or HASH.fullmatch(entry["sha256"]) is None):
-        raise ValueError("Для файла нужны path и SHA-256 из 64 строчных hex-символов")
+        raise ValueError("Each file needs a path and a 64-character lowercase SHA-256 hash")
     return entry["path"], entry["sha256"]
 
 
@@ -40,106 +40,106 @@ def _positive(value, label):
     except OverflowError:
         valid = False
     if not valid:
-        raise ValueError(f"{label}: требуется положительное конечное число")
+        raise ValueError(f"{label} must be a positive finite number")
 
 
 def check_preparation(manifest_path):
     manifest_path = Path(manifest_path).resolve()
     manifest = _read_json(manifest_path)
     if type(manifest.get("schema_version")) is not int or manifest["schema_version"] != 2:
-        raise ValueError("Подготовка требует schema_version: 2")
+        raise ValueError("Preparation requires schema_version: 2")
     if manifest.get("kind") != "prepared-content":
-        raise ValueError("Ожидается kind: prepared-content")
+        raise ValueError("Set kind to prepared-content")
     content = manifest.get("content")
     preparation = content.get("preparation") if isinstance(content, dict) else None
     if not isinstance(preparation, dict):
-        raise ValueError("Нужен объект content.preparation")
+        raise ValueError("Add a content.preparation object")
     viewport = preparation.get("viewport")
     if not isinstance(viewport, dict):
-        raise ValueError("Нужен preparation.viewport с полной шириной и высотой в points")
+        raise ValueError("Set the full viewport width and height in points in preparation.viewport")
     for dimension in ("width", "height"):
         _positive(viewport.get(dimension), f"viewport.{dimension}")
     _positive(preparation.get("visible_height"), "visible_height")
     if preparation["visible_height"] > viewport["height"]:
-        raise ValueError("visible_height не может превышать полную viewport.height")
+        raise ValueError("visible_height exceeds viewport.height")
     for field in ("keyboard_visible", "typing_visible"):
         if type(preparation.get(field)) is not bool:
-            raise ValueError(f"preparation.{field} должен быть true или false")
+            raise ValueError(f"Set preparation.{field} to true or false")
     checks = preparation.get("checks")
     if not isinstance(checks, dict) or set(checks) != set(CHECKS):
-        raise ValueError("preparation.checks должен содержать пять проверок: " + ", ".join(CHECKS))
+        raise ValueError("preparation.checks must include all five checks: " + ", ".join(CHECKS))
     files = manifest.get("files")
     if not isinstance(files, list):
-        raise ValueError("В manifest требуется список files")
+        raise ValueError("Add a files list to the manifest")
     declared = {}
     for entry in files:
         path, digest = _file_entry(entry)
         resolved = (manifest_path.parent / path).resolve()
         if resolved in declared:
-            raise ValueError(f"Файл повторяется в files: {path}")
+            raise ValueError(f"Duplicate file in files: {path}")
         declared[resolved] = digest
 
     # A local preset name is insufficient: verify the actual stage geometry.
     framing = preparation.get("framing")
     if not isinstance(framing, list) or not framing:
-        raise ValueError("framing: приложите геометрию каждого использованного кадрирования")
+        raise ValueError("Attach the geometry for each framing used")
     from compose_pilot import PRODUCT_LAYOUTS, ROOT, geometry, use_layout
     product = _read_json(ROOT / "profiles/telegram-product.json")
     catalog = _read_json(ROOT / "assets/showtime/phones.json")
     phones = {phone["id"]: phone for phone in catalog["phones"]}
     for shot in framing:
         if not isinstance(shot, dict) or shot.get("layout") not in PRODUCT_LAYOUTS:
-            raise ValueError("framing: разрешены только crop-top, crop-bottom и full")
+            raise ValueError("Choose crop-top, crop-bottom, or full for framing")
         phone = phones.get(shot.get("device_id"))
         if phone is None:
-            raise ValueError("framing: неизвестный макет телефона")
+            raise ValueError("Unknown phone mockup in framing")
         path, digest = _file_entry(shot.get("geometry"))
         resolved = (manifest_path.parent / path).resolve()
         if declared.get(resolved) != digest or file_sha256(resolved) != digest:
-            raise ValueError("framing: файл геометрии отсутствует в files или изменился")
+            raise ValueError("The geometry file is missing from files or has changed")
         expected_config = {**product, "device": {**product["device"], **phone}}
         expected = geometry(use_layout(expected_config, shot["layout"]))
         actual = _read_json(resolved)
         actual = actual.get("geometry", actual)
         if not isinstance(actual, dict) or any(actual.get(k) != expected[k] for k in ("device", "screen")):
-            raise ValueError("framing: геометрия сцены не соответствует " + shot["layout"])
+            raise ValueError("The stage geometry does not match " + shot["layout"])
 
     verified = {}
     for name in CHECKS:
         check = checks[name]
         if not isinstance(check, dict) or not _text(check.get("note")):
-            raise ValueError(f"{name}: требуется объект проверки с непустым note")
+            raise ValueError(f"{name} needs a check object with a nonempty note")
         status = check.get("status")
         if status not in ("ready", "not_applicable"):
-            raise ValueError(f"{name}: status должен быть ready или not_applicable")
+            raise ValueError(f"Set {name}.status to ready or not_applicable")
         if status == "not_applicable":
             allowed = ((name == "keyboard_suggestions" and not preparation["keyboard_visible"])
                        or (name == "character_typing" and not preparation["typing_visible"]))
             if not allowed:
-                raise ValueError(f"{name}: not_applicable недопустим для этой сцены")
+                raise ValueError(f"{name} applies to this scene. Use ready instead of not_applicable.")
         if name == "character_typing" and preparation["typing_visible"] and status == "ready":
             if check.get("visible_keypresses") is not False:
-                raise ValueError("character_typing: проверьте весь ввод в движении; "
-                                 "требуется visible_keypresses: false (без подсветки, попапов и колец на клавишах)")
+                raise ValueError("For character_typing, watch the entire typing sequence. "
+                                 "Set visible_keypresses to false only if the keys show no highlights, popups, or touch rings.")
         evidence = check.get("evidence")
         if not isinstance(evidence, list) or (status == "ready" and not evidence):
-            raise ValueError(f"{name}: нужен список evidence; ready требует хотя бы один файл")
+            raise ValueError(f"{name} needs an evidence list. A ready check needs at least one file.")
         motion_found = False
         for entry in evidence:
             path, digest = _file_entry(entry)
             resolved = (manifest_path.parent / path).resolve()
             if declared.get(resolved) != digest:
-                raise ValueError(f"{name}: evidence отсутствует в files или имеет другой SHA-256: {path}")
+                raise ValueError(f"{name} evidence is missing from files or its SHA-256 differs: {path}")
             extension = Path(path).suffix.lower()
             if extension not in MEDIA:
-                raise ValueError(f"{name}: evidence должен быть кадром или видео: {path}")
+                raise ValueError(f"{name} evidence must be an image or video: {path}")
             motion_found = motion_found or extension in MOTION
             if resolved not in verified:
                 verified[resolved] = file_sha256(resolved)
             if verified[resolved] != digest:
-                raise ValueError(f"{name}: файл evidence изменился: {path}; обновите материалы и хеш")
+                raise ValueError(f"{name} evidence changed: {path}. Update the materials and hash.")
         if status == "ready" and name in ("full_height", "character_typing") and not motion_found:
-            raise ValueError(f"{name}: нужно превью движения (mp4, mov, webm или gif)")
+            raise ValueError(f"{name} needs a motion preview (mp4, mov, webm, or gif)")
 
     return {
         "manifest": str(manifest_path),

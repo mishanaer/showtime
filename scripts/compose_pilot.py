@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Showtime pilot compositor. Python 3 + Pillow + NumPy + FFmpeg; no simulator access.
+"""showtime pilot compositor. Python 3 + Pillow + NumPy + FFmpeg; no simulator access.
 
 prepare: creates a clearly marked technical preview and reusable stage layers.
 render:  real capture + optional timed PNG taps -> 10–20 s, 1920-square 60 fps MP4.
-compare: original on the left, Showtime on the right, labelled 3840x2040 MP4.
+compare: original on the left, showtime on the right, labelled 3840x2040 MP4.
 
 Events JSON: {"coordinate_space":{"width":402,"height":874},"events":[
   {"time":1.2,"x":201,"y":510,"type":"tap","anchor_frame":25}]}
@@ -51,7 +51,7 @@ def load_config(path, layout=None):
 
 def validate_editorial_policy(config):
     if config.get("policy", {}).get("editorial_text") is False and config.get("caption"):
-        raise ValueError("Профиль запрещает монтажные надписи: удалите caption из конфигурации")
+        raise ValueError("This profile excludes editorial text. Remove caption from the configuration.")
 
 
 def requires_node(config):
@@ -129,14 +129,14 @@ def validate_visible_targets(events, coord_size, scaled_size, crop_offset, scree
     for event in events:
         x, y = event["x"], event["y"]
         if not 0 <= x <= coord_w or not 0 <= y <= coord_h:
-            raise ValueError(f"Точка действия вне исходного экрана: {event.get('id', 'без имени')}")
+            raise ValueError(f"Action {event.get('id', 'unnamed')} falls outside the source screen")
         px, py = sx + x / coord_w * scaled_w - crop_x, sy + y / coord_h * scaled_h - crop_y
         if not (max(0, sx) <= px < min(canvas_w, sx + sw)
                 and max(0, sy) <= py < min(canvas_h, sy + sh)):
             raise ValueError(
-                f"Кадрирование скрывает действие {event.get('id', 'без имени')} "
-                f"в точке ({px:.1f}, {py:.1f}). Подготовьте сцену под кадр Telegram "
-                "и согласуйте её предпросмотр перед новой записью."
+                f"Framing hides action {event.get('id', 'unnamed')} "
+                f"at ({px:.1f}, {py:.1f}). Adjust the scene to fit the selected frame "
+                "and get the revised preview approved before recording again."
             )
 
 
@@ -145,9 +145,9 @@ def tap_tint(config, event):
     color = event.get("tint_rgb", config.get("tint_rgb", config.get("monochrome_rgb")))
     if color is not None and (not isinstance(color, list) or len(color) != 3
                              or any(type(c) is not int or not 0 <= c <= 255 for c in color)):
-        raise ValueError("Цвет тапа tint_rgb должен содержать три целых числа от 0 до 255")
+        raise ValueError("Set tint_rgb to three integers from 0 to 255")
     if color is not None and config.get("monochrome_rgb") is None:
-        raise ValueError("Изменение цвета тапа требует проверенного одноцветного исходника monochrome_rgb")
+        raise ValueError("To tint a tap, verify the source color and set monochrome_rgb")
     return color
 
 
@@ -322,12 +322,12 @@ def render(args, config, directory):
         raise ValueError("Capture trim must be inside the actual recording")
     fps = config["canvas"]["fps"]
     if fps != 60:
-        raise ValueError("Готовый ролик должен иметь ровно 60 fps")
+        raise ValueError("The final video must be exactly 60 fps")
     expected_frames = delivery_frame_count(duration)
     review = production_review(args.capture)
     if review.get("profile_sha256"):
         if sha256(args.config) != review["profile_sha256"] or getattr(args, "layout", None) not in (None, load_config(args.config)["layout"]):
-            raise ValueError("Для экспорта требуется согласованный профиль и кадрирование")
+            raise ValueError("Use the approved profile and framing for export")
 
     duration = expected_frames / fps
     g = prepare(config, directory)
@@ -419,7 +419,7 @@ def render(args, config, directory):
         event_frames = len(frame_map)
         end_frame = start_frame + event_frames - 1
         if start_frame < 0 or end_frame >= expected_frames:
-            raise ValueError(f"Запись обрывает жест {event.get('id')}; нужен полный контакт и исчезновение кольца")
+            raise ValueError(f"The clip cuts off gesture {event.get('id')}. Include the full contact and ring fade.")
         px = sx + event["x"]/coord_w*scaled_w - crop_x
         py = sy + event["y"]/coord_h*scaled_h - crop_y
         sequence = tap_sequence
@@ -477,7 +477,7 @@ def render(args, config, directory):
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists() and any(output.samefile(path) for path in [args.capture]):
-        raise ValueError("Для экспорта нужен путь, отличный от исходного видео")
+        raise ValueError("Choose an output path different from the source video")
     with tempfile.TemporaryDirectory(dir=output.parent) as staging:
         candidate = Path(staging) / output.name
         run(inputs+["-filter_complex_threads", "2", "-filter_complex", ";".join(filters), "-map", "[out]", "-an", "-t", str(duration), "-frames:v", str(expected_frames), "-r", str(fps), "-c:v", "libx264", "-preset", args.preset, "-crf", str(args.crf), "-movflags", "+faststart", str(candidate)])
@@ -485,7 +485,7 @@ def render(args, config, directory):
         if not quality["passed"]:
             raise RenderQualityError(quality)
         if quality["decoded_frame_count"] != expected_frames:
-            raise ValueError("Рендер содержит не все запланированные кадры")
+            raise ValueError("The render is missing planned frames")
         quality["output"] = str(output.resolve())
         report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"tap":{"sequence":tap_sequence,"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
         report["layout"] = config.get("layout")
@@ -539,10 +539,10 @@ def compare(args, config, directory):
     output.parent.mkdir(parents=True, exist_ok=True)
     fps = config["canvas"]["fps"]
     if fps != 60:
-        raise ValueError("Готовое сравнение должно иметь ровно 60 fps")
+        raise ValueError("The comparison must be exactly 60 fps")
     filters = f"[0:v]setpts=PTS-STARTPTS,fps={fps},tpad=stop_mode=clone:stop_duration={padding[0]},scale={cell}:{cell}:force_original_aspect_ratio=decrease,pad={cell}:{cell}:(ow-iw)/2:(oh-ih)/2,setsar=1[a];[1:v]setpts=PTS-STARTPTS,fps={fps},tpad=stop_mode=clone:stop_duration={padding[1]},scale={cell}:{cell}:force_original_aspect_ratio=decrease,pad={cell}:{cell}:(ow-iw)/2:(oh-ih)/2,setsar=1[b];[a][b]hstack[body];[2:v][body]vstack=shortest=1,format=yuv420p[out]"
     if output.exists() and any(output.samefile(path) for path in [args.ours, args.original]):
-        raise ValueError("Для экспорта нужен путь, отличный от исходного видео")
+        raise ValueError("Choose an output path different from the source video")
     with tempfile.TemporaryDirectory(dir=output.parent) as staging:
         candidate = Path(staging) / output.name
         run(["ffmpeg","-hide_banner","-y","-loglevel","warning","-i",args.original,"-i",args.ours,"-loop","1","-framerate",str(fps),"-i",label_path,"-filter_complex_threads","2","-filter_complex",filters,"-map","[out]","-an","-t",str(duration),"-r",str(fps),"-c:v","libx264","-preset",args.preset,"-crf",str(args.crf),"-movflags","+faststart",candidate])
@@ -582,7 +582,7 @@ def main():
     p.add_argument("--output", required=True)
     p.add_argument("--crf", type=int, default=18)
     p.add_argument("--preset", default="fast")
-    p = sub.add_parser("compare", help="Labelled original-left / Showtime-right comparison, no retiming")
+    p = sub.add_parser("compare", help="Labelled original-left / showtime-right comparison, no retiming")
     p.add_argument("--original", required=True)
     p.add_argument("--ours", required=True)
     p.add_argument("--output", required=True)
@@ -602,7 +602,7 @@ def main():
             raise RuntimeError(f"Required tool is missing: {tool}")
     directory = (args.work_dir or Path("outputs/showtime-stage")).resolve()
     if args.command != "prepare" and Path(args.output).suffix.lower() != ".mp4":
-        raise ValueError("Для результата нужен отдельный файл .mp4")
+        raise ValueError("Choose a separate .mp4 output file")
     with file_lock(directory / ".stage.lock"):
         if args.command == "prepare":
             preview = args.preview or directory/"technical-preview.png"
@@ -620,5 +620,5 @@ if __name__ == "__main__":
     try:
         main()
     except (ValueError, RuntimeError, OSError, subprocess.CalledProcessError) as error:
-        print(f"Showtime compositor: {error}", file=sys.stderr)
+        print(f"showtime compositor: {error}", file=sys.stderr)
         sys.exit(1)

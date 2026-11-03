@@ -20,21 +20,21 @@ def main():
     parser.add_argument("--simulator", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--scenario", type=Path, required=True,
-                        help="Согласованный сценарий")
+                        help="Approved scenario")
     parser.add_argument("--prepared-content", type=Path,
-                        help="Согласованные контент и предпросмотр; обязательны для финальной записи")
+                        help="Approved content and preview, required for a final recording")
     parser.add_argument("--approval-dir", type=Path, required=True,
-                        help="Зафиксированные явные решения человека")
+                        help="Directory containing the recorded approval decisions")
     parser.add_argument("--preparation-preview", action="store_true",
-                        help="Техническое превью до ревью материалов; требует только согласования сценария")
+                        help="Record a technical preview after scenario approval and before materials review")
     parser.add_argument("--revision-file", type=Path,
-                        help="Зафиксированное поручение пользователя исправить согласованный ролик")
+                        help="Recorded request to revise an approved video")
     parser.add_argument("--tail-sentinel", action="store_true", help="On stop, preserve idle video tail with a late 9:42 status marker; restore 9:41 after finalizing")
     args = parser.parse_args()
     if args.preparation_preview and args.revision_file is not None:
-        parser.error("--revision-file нельзя использовать с --preparation-preview")
+        parser.error("Use --revision-file only for a final recording")
     if not args.preparation_preview and args.prepared_content is None:
-        parser.error("Для финальной записи требуется --prepared-content")
+        parser.error("A final recording requires --prepared-content")
     try:
         if args.preparation_preview:
             review = check_review_gate(args.scenario, None, args.approval_dir)

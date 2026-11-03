@@ -27,7 +27,7 @@ class RenderQualityError(RuntimeError):
     def __init__(self, report):
         self.report = report
         reasons = "; ".join(item["message"] for item in report["failures"])
-        super().__init__("Итоговый ролик не прошёл проверку: " + reasons)
+        super().__init__("Final video failed validation: " + reasons)
 
 
 def _fraction(value):
@@ -86,7 +86,7 @@ def _fail(report, code, message, **details):
 def _audit_timing(data, report):
     streams = data.get("streams", [])
     if not streams:
-        _fail(report, "missing_video_stream", "Не найден видеопоток")
+        _fail(report, "missing_video_stream", "No video stream found")
         return
     stream = streams[0]
     report["stream"] = stream
@@ -95,14 +95,14 @@ def _audit_timing(data, report):
         if time_base <= 0:
             raise ValueError("non-positive time base")
     except (ValueError, ZeroDivisionError):
-        _fail(report, "invalid_time_base", "Не определена временная шкала итогового ролика")
+        _fail(report, "invalid_time_base", "The video stream has no valid time base")
         return
     try:
         average_rate = _fraction(stream.get("avg_frame_rate"))
     except (ValueError, ZeroDivisionError):
         average_rate = None
     if average_rate != TARGET_FPS:
-        _fail(report, "average_rate_not_exact_60", "Средняя частота потока не равна ровно 60/1",
+        _fail(report, "average_rate_not_exact_60", "The average stream frame rate must be exactly 60/1",
               actual=stream.get("avg_frame_rate"))
     try:
         stream_duration = _seconds(stream, "duration_ts", "duration", time_base)
@@ -110,12 +110,12 @@ def _audit_timing(data, report):
             raise ValueError("non-positive duration")
     except (ValueError, ZeroDivisionError):
         stream_duration = None
-        _fail(report, "invalid_stream_duration", "Отсутствует корректная длительность видеопотока")
+        _fail(report, "invalid_stream_duration", "The video stream has no valid duration")
 
     frames = data.get("frames", [])
     report["decoded_frame_count"] = len(frames)
     if len(frames) < 2:
-        _fail(report, "too_few_frames", "Для проверки нужны минимум два декодированных кадра")
+        _fail(report, "too_few_frames", "At least two decoded frames are required")
         return
     timestamps, durations = [], []
     bad_pts, bad_durations = [], []
@@ -135,15 +135,15 @@ def _audit_timing(data, report):
         except (ValueError, ZeroDivisionError):
             bad_durations.append(index)
     if bad_pts:
-        _fail(report, "invalid_frame_pts", "Есть кадры без конечного числового PTS", count=len(bad_pts), frame_indices=bad_pts[:20])
+        _fail(report, "invalid_frame_pts", "Some frames have no finite presentation timestamp", count=len(bad_pts), frame_indices=bad_pts[:20])
     if bad_durations:
-        _fail(report, "invalid_frame_duration", "Есть кадры без корректной длительности", count=len(bad_durations), frame_indices=bad_durations[:20])
+        _fail(report, "invalid_frame_duration", "Some frames have no valid duration", count=len(bad_durations), frame_indices=bad_durations[:20])
     if durations:
         report["frame_duration_ms"] = {"min": float(min(durations)*1000), "max": float(max(durations)*1000), "last": float(durations[-1]*1000)}
     if not bad_durations:
         wrong_durations = [i for i, duration in enumerate(durations) if abs(duration-FRAME_PERIOD) > TIMESTAMP_TOLERANCE]
         if wrong_durations:
-            _fail(report, "frame_duration_not_60hz", "Длительность кадров отличается от 1/60 с",
+            _fail(report, "frame_duration_not_60hz", "Frame durations differ from 1/60 second",
                   count=len(wrong_durations), frame_indices=wrong_durations[:20])
     if bad_pts:
         return
@@ -151,7 +151,7 @@ def _audit_timing(data, report):
     intervals = [b-a for a, b in zip(timestamps, timestamps[1:])]
     nonmonotonic = [i+1 for i, dt in enumerate(intervals) if dt <= 0]
     if nonmonotonic:
-        _fail(report, "nonmonotonic_pts", "PTS кадров повторяются или идут назад", frame_indices=nonmonotonic[:20])
+        _fail(report, "nonmonotonic_pts", "Frame timestamps repeat or go backwards", frame_indices=nonmonotonic[:20])
     step_errors = [abs(dt-FRAME_PERIOD) for dt in intervals]
     grid_errors = [abs(t-timestamps[0]-i*FRAME_PERIOD) for i, t in enumerate(timestamps)]
     gaps = [{"after_frame": i, "from_pts": float(timestamps[i]), "to_pts": float(timestamps[i+1]), "interval_ms": float(dt*1000)}
@@ -169,18 +169,18 @@ def _audit_timing(data, report):
         "interval_violations": step_bad, "gap_count": len(gaps), "gap_examples": gaps[:20],
     }
     if step_bad:
-        _fail(report, "irregular_frame_intervals", "Интервалы кадров не образуют равномерные 60 Гц", count=step_bad)
+        _fail(report, "irregular_frame_intervals", "Frame intervals do not follow a steady 60 Hz cadence", count=step_bad)
     if max(grid_errors) > TIMESTAMP_TOLERANCE:
-        _fail(report, "off_60hz_grid", "Накопленное отклонение PTS от сетки 60 Гц превышает допуск")
+        _fail(report, "off_60hz_grid", "Frame timestamps drift beyond the allowed 60 Hz tolerance")
     if observed_rate is None or abs(observed_rate-TARGET_FPS) > RATE_TOLERANCE:
-        _fail(report, "observed_rate_not_60", "Частота по декодированным PTS не соответствует 60 fps")
+        _fail(report, "observed_rate_not_60", "Decoded timestamps do not match 60 fps")
     if stream_duration is not None:
         expected_duration = len(frames)*FRAME_PERIOD
         if abs(stream_duration-expected_duration) > TIMESTAMP_TOLERANCE:
-            _fail(report, "stream_duration_mismatch", "Длительность потока не соответствует числу кадров при 60 fps",
+            _fail(report, "stream_duration_mismatch", "Stream duration does not match the frame count at 60 fps",
                   actual_seconds=float(stream_duration), expected_seconds=float(expected_duration))
         if not bad_durations and abs(stream_duration-(span+durations[-1])) > TIMESTAMP_TOLERANCE:
-            _fail(report, "timeline_tail_mismatch", "Длительность потока не совпадает с концом последнего кадра")
+            _fail(report, "timeline_tail_mismatch", "Stream duration does not match the end of the last frame")
 
 
 def audit_render(path):
@@ -197,13 +197,13 @@ def audit_render(path):
             "-of", "json", str(path),
         ], check=True, capture_output=True, text=True, timeout=180)
         if completed.stderr.strip():
-            _fail(report, "decode_errors", "Декодер сообщил об ошибках", details=completed.stderr.strip()[:1500])
+            _fail(report, "decode_errors", "The decoder reported errors", details=completed.stderr.strip()[:1500])
         _audit_timing(json.loads(completed.stdout), report)
         after = path.stat()
         if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns) or _file_sha256(path) != report["output_sha256"]:
-            _fail(report, "output_changed_during_audit", "Итоговый ролик изменился во время проверки")
+            _fail(report, "output_changed_during_audit", "The output changed during validation. Check the completed file again.")
     except (OSError, ValueError, subprocess.SubprocessError) as error:
-        _fail(report, "render_audit_error", "Не удалось проверить итоговый ролик", details=str(error)[:1500])
+        _fail(report, "render_audit_error", "Could not verify the output video", details=str(error)[:1500])
     report["passed"] = not report["failures"]
     report["render_cadence_60fps"] = "passed" if report["passed"] else "failed"
     return report
@@ -224,17 +224,17 @@ def delivery_frame_count(duration):
     count at 60 fps; source-video frame rate is irrelevant to this calculation.
     """
     if type(duration) not in (int, float):
-        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд")
+        raise ValueError("Enter a positive finite duration in seconds")
     try:
         seconds = _fraction(duration)
     except (ValueError, ZeroDivisionError):
-        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд") from None
+        raise ValueError("Enter a positive finite duration in seconds") from None
     if seconds <= 0:
-        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд")
+        raise ValueError("Enter a positive finite duration in seconds")
     frames = round(seconds * TARGET_FPS)
     if not DELIVERY_MIN_FRAMES <= frames <= DELIVERY_MAX_FRAMES:
-        raise ValueError("Готовый продуктовый ролик должен длиться 10–20 секунд "
-                         "(600–1200 кадров при 60 fps); автоматического сокращения или растяжения нет")
+        raise ValueError("The final video must last 10–20 seconds "
+                         "(600–1200 frames at 60 fps). Adjust the edit to fit.")
     return frames
 
 
@@ -263,11 +263,11 @@ def audit_delivery(path):
     }
     if not frame_count_valid:
         _fail(report, "delivery_frame_count_out_of_range",
-              "Готовый продуктовый ролик должен содержать 600–1200 кадров при 60 fps (10–20 секунд)",
+              "The final video must contain 600–1200 frames at 60 fps (10–20 seconds)",
               actual_decoded_frames=frames, minimum=DELIVERY_MIN_FRAMES, maximum=DELIVERY_MAX_FRAMES)
     stream = report.get("stream", {})
     if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
-        _fail(report, "delivery_dimensions", "Размер продуктового ролика должен быть 1920 × 1920")
+        _fail(report, "delivery_dimensions", "The final video must be 1920 × 1920")
     report["passed"] = not report["failures"]
     return report
 
@@ -277,11 +277,11 @@ def main():
     parser.add_argument("render", type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--cadence-only", action="store_true",
-                        help="Только диагностический аудит fps для SBS и технических видео; не проверяет готовность продуктового ролика")
+                        help="Check frame cadence only for comparisons and technical previews")
     args = parser.parse_args()
     if args.report and (args.render.resolve() == args.report.resolve() or
                         (args.report.exists() and args.render.exists() and args.report.samefile(args.render))):
-        parser.error("Путь отчёта совпадает с видео. Укажите отдельный JSON.")
+        parser.error("The report path points to the video. Choose a separate JSON file.")
     report = (audit_render if args.cadence_only else audit_delivery)(args.render)
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
     if args.report:

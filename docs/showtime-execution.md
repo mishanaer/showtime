@@ -1,4 +1,4 @@
-# Showtime execution
+# showtime execution
 
 Commands assume `SHOWTIME` is the resolved skill root and `RUN_DIR` is the video's absolute working directory. Discover the app, simulator and input driver from the task; use script `--help` for additional options.
 
@@ -30,7 +30,7 @@ Set the product profile layout to `crop-top`, `crop-bottom` or `full` before pre
 
 For character typing, use `--type type_text --text-file <file>`, omitting `--point` and `--step`. The default rate is 30 characters per second (1/30-second inter-character delay, plus driver overhead). This AXe route accepts printable US ASCII without a trailing newline. Use a verified app-side or other driver for unsupported characters. If hardware input changes the layout, hides a required keyboard or animates keys, use a demo driver to insert one character at a time into the focused native field. Verify the resulting text and check consecutive frames across the entire input for key highlights, popups and rings.
 
-For a local simulator build, Showtime includes [the native typing driver](../scripts/simulator/typing-driver.m). Compile it once in the run directory on the Mac hosting the simulator (bash):
+For a local simulator build, showtime includes [the native typing driver](../scripts/simulator/typing-driver.m). Compile it once in the run directory on the Mac hosting the simulator (bash):
 
 ```bash
 DRIVER="$RUN_DIR/showtime-typing.dylib"

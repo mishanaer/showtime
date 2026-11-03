@@ -61,9 +61,9 @@ def visual_gesture(event):
     if result["type"] == "long_press":
         start, end = event.get("contact_start"), event.get("contact_end")
         if any(type(value) not in (float, int) or not math.isfinite(value) for value in (start, end)):
-            raise ValueError(f"{event['id']}: удержание требует contact_start/contact_end из журнала down/up или просмотра")
+            raise ValueError(f"{event['id']}: a hold needs contact_start and contact_end from the down/up log or a reviewed recording")
         if not event["source_start"] <= start < end <= event["source_end"]:
-            raise ValueError(f"{event['id']}: контакт должен находиться внутри действия")
+            raise ValueError(f"{event['id']}: the contact interval must fall within the action")
         result.update(source_time=start, hold_seconds=end-start, hold_timing=event.get("contact_timing"))
         gesture_frame_map(result, 41, 25, FPS)
     return result
@@ -79,7 +79,7 @@ def plan_edit(raw, observations, duration, source_sha256):
         frame_map, _ = gesture_frame_map(gesture, 41, 25, FPS)
         anchor = round(gesture["source_time"] * FPS)
         if anchor < 25:
-            raise ValueError(f"{gesture['id']}: не хватает записи перед касанием для полного появления кольца (25 кадров)")
+            raise ValueError(f"{gesture['id']}: keep at least 25 frames before contact so the ring can appear")
         first, last = anchor-25, anchor-25+len(frame_map)
         protected["protected_ranges"].append({"start": first/FPS, "end": last/FPS,
                                               "reason": "Complete gesture: " + gesture["id"]})
@@ -101,7 +101,7 @@ def remap_gestures(gestures, intervals):
                 mapped.append(event)
         cursor += last-first
     if len(mapped) != len(gestures):
-        raise ValueError("Монтаж потерял или продублировал жест")
+        raise ValueError("The edit lost or duplicated a gesture")
     return mapped
 
 
@@ -110,7 +110,7 @@ def main():
     parser.add_argument("--capture", type=Path, required=True)
     parser.add_argument("--events", type=Path, required=True)
     parser.add_argument("--observations", type=Path, required=True,
-                        help="Проверенные по записи моменты реакции, результата и исчезновения перекрытий")
+                        help="Reviewed times for the response, visible result, and disappearance of overlays")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     source = args.capture.resolve()
@@ -135,7 +135,7 @@ def main():
     normalized_probe = probe(normalized)
     normalized_video = next(s for s in normalized_probe["streams"] if s["codec_type"] == "video")
     if int(normalized_video["nb_frames"]) < intervals[-1][1]:
-        raise ValueError("Запись не содержит полного финала на монтажной сетке: нужен записанный результат и пауза")
+        raise ValueError("Record the full result and reading pause before editing")
     files, segments, cursor = [], [], 0
     for index, (first, last) in enumerate(intervals):
         filename = work / f"segment-{index:02d}.mp4"

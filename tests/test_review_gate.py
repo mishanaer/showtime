@@ -101,7 +101,7 @@ class ReviewGateTests(unittest.TestCase):
         return GATE.check_review_gate(self.scenario_path, self.prepared_path, self.approvals)
 
     def test_missing_approvals_fail_without_writing_anything(self):
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Нет согласования сценария"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "Missing scenario approval"):
             self.check_recording()
         self.assertFalse(self.approvals.exists())
 
@@ -109,7 +109,7 @@ class ReviewGateTests(unittest.TestCase):
         self.approve_scenario()
         result = GATE.check_review_gate(self.scenario_path, None, self.approvals)
         self.assertEqual(result["stage"], "preparation")
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Нет согласования подготовленного контента"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "Missing prepared content approval"):
             self.check_recording()
 
     def test_recording_requires_preparation_evidence(self):
@@ -120,7 +120,7 @@ class ReviewGateTests(unittest.TestCase):
             self.approve_prepared()
 
     def test_prepared_approval_cannot_precede_scenario_approval(self):
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Нет согласования сценария"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "Missing scenario approval"):
             self.approve_prepared()
         self.assertFalse(self.approvals.exists())
 
@@ -141,7 +141,7 @@ class ReviewGateTests(unittest.TestCase):
         self.asset.write_text("Prepared content", encoding="utf-8")
         os.utime(self.asset, ns=(before.st_atime_ns, before.st_mtime_ns))
         self.assertEqual(self.asset.stat().st_size, before.st_size)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Файл изменился"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "File changed"):
             self.check_recording()
 
     def test_updating_file_hash_does_not_reuse_old_approval(self):
@@ -150,7 +150,7 @@ class ReviewGateTests(unittest.TestCase):
         self.asset.write_text("New reviewed content is needed", encoding="utf-8")
         self.prepared["files"][0]["sha256"] = GATE.file_sha256(self.asset)
         self.refresh_review()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "устарело или неполно"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "outdated or incomplete"):
             self.check_recording()
 
     def test_content_text_change_invalidates_approval(self):
@@ -158,7 +158,7 @@ class ReviewGateTests(unittest.TestCase):
         self.approve_prepared()
         self.prepared["content"]["summary"] = "Different scene contents"
         self.refresh_review()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "устарело или неполно"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "outdated or incomplete"):
             self.check_recording()
 
     def test_scenario_change_invalidates_both_checkpoints(self):
@@ -166,14 +166,14 @@ class ReviewGateTests(unittest.TestCase):
         self.approve_prepared()
         self.scenario["content"]["story"]["payoff"] = "Show a different result"
         self.write(self.scenario_path, self.scenario)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "сценария устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "scenario approval is outdated"):
             self.check_recording()
         self.approve_scenario()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "другой версии сценария"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "different scenario version"):
             self.check_recording()
         self.prepared["scenario_sha256"] = GATE.canonical_sha256(self.scenario)
         self.refresh_review()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "контента устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "prepared content approval is outdated"):
             self.check_recording()
 
     def test_same_content_reapproved_scenario_requires_new_prepared_approval(self):
@@ -188,7 +188,7 @@ class ReviewGateTests(unittest.TestCase):
         self.assertEqual(archived.read_bytes(), original)
         self.assertEqual(json.loads(receipt_path.read_bytes())["human_decision"]["reference"],
                          "test://new-human-decision")
-        with self.assertRaisesRegex(GATE.ReviewGateError, "контента устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "prepared content approval is outdated"):
             self.check_recording()
 
     def test_identical_scenario_approval_replay_preserves_recording_permission(self):
@@ -262,7 +262,7 @@ class ReviewGateTests(unittest.TestCase):
         archive.parent.mkdir()
         archive.write_bytes(b"Unexpected existing archive")
         new_decision = self.decision(self.scenario_path, reference="test://new-human-decision")
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Архив согласования отличается"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "archived approval differs"):
             GATE.approve_review(self.scenario_path, None, self.approvals, new_decision)
         self.assertEqual(path.read_bytes(), original)
         self.assertEqual(archive.read_bytes(), b"Unexpected existing archive")
@@ -300,7 +300,7 @@ class ReviewGateTests(unittest.TestCase):
         decision, revision = self.correction_fixture()
         baseline = {path: path.read_bytes() for path in self.approvals.glob("*.approval.json")}
         self.authorize_fixture_correction(decision, revision)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "контента устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "prepared content approval is outdated"):
             self.check_recording()
         allowed = GATE.check_review_gate(self.scenario_path, self.prepared_path, self.approvals, revision)
         self.assertEqual(allowed["stage"], "recording")
@@ -320,7 +320,7 @@ class ReviewGateTests(unittest.TestCase):
         self.assertEqual(revision.stat().st_mtime_ns, 1_000_000_000)
         baseline = self.approvals / "prepared-content.approval.json"
         baseline_bytes = baseline.read_bytes()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "уже существует"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "already exists"):
             self.authorize_fixture_correction(decision, baseline)
         self.assertEqual(baseline.read_bytes(), baseline_bytes)
 
@@ -377,7 +377,7 @@ class ReviewGateTests(unittest.TestCase):
         self.authorize_fixture_correction(decision, revision)
         self.scenario["content"]["story"]["action"] = "A different action"
         self.write(self.scenario_path, self.scenario)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "сценария устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "scenario approval is outdated"):
             GATE.check_review_gate(self.scenario_path, self.prepared_path, self.approvals, revision)
         self.scenario["content"]["story"]["action"] = "Change the pickup time"
         self.write(self.scenario_path, self.scenario)
@@ -392,7 +392,7 @@ class ReviewGateTests(unittest.TestCase):
         self.authorize_fixture_correction(decision, revision)
         original = json.loads(revision.read_bytes())
         self.write(revision, {**original, "files": []})
-        with self.assertRaisesRegex(GATE.ReviewGateError, "неполон"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "incomplete"):
             GATE.check_review_gate(self.scenario_path, self.prepared_path, self.approvals, revision)
         with self.assertRaisesRegex(GATE.ReviewGateError, "prepared-content"):
             GATE.check_review_gate(self.scenario_path, None, self.approvals, revision)
@@ -401,7 +401,7 @@ class ReviewGateTests(unittest.TestCase):
         decision, revision = self.correction_fixture()
         self.prepared["content"]["summary"] = "Changed since the synthetic internal review"
         self.write(self.prepared_path, self.prepared)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "рецензия устарела"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "frame review is outdated"):
             self.authorize_fixture_correction(decision, revision)
         self.assertFalse(revision.exists())
 
@@ -432,17 +432,17 @@ class ReviewGateTests(unittest.TestCase):
         decision_path = self.decision(self.scenario_path)
         self.scenario["content"]["story"]["payoff"] = "Not what the human reviewed"
         self.write(self.scenario_path, self.scenario)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "другой версии материалов"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "different version of the materials"):
             GATE.approve_review(self.scenario_path, None, self.approvals, decision_path)
         self.assertFalse(self.approvals.exists())
 
     def test_missing_file_and_empty_prepared_files_fail(self):
         self.asset.unlink()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Не удалось прочитать проверяемый файл"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "Could not read file"):
             GATE.load_manifest(self.prepared_path)
         self.prepared["files"] = []
         self.write(self.prepared_path, self.prepared)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "хотя бы один"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "at least one"):
             GATE.load_manifest(self.prepared_path)
 
     def test_partial_or_forged_receipt_without_human_decision_fails(self):
@@ -452,7 +452,7 @@ class ReviewGateTests(unittest.TestCase):
         receipt = json.loads(path.read_text())
         del receipt["human_decision"]
         self.write(path, receipt)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "Неполная запись"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "Incomplete approval record"):
             self.check_recording()
 
     def test_cli_check_fails_closed_and_fingerprint_is_read_only(self):
@@ -460,7 +460,7 @@ class ReviewGateTests(unittest.TestCase):
                                  str(self.scenario_path), "--prepared-content", str(self.prepared_path),
                                  "--approval-dir", str(self.approvals)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
-        self.assertIn("Нет согласования сценария", result.stderr)
+        self.assertIn("Missing scenario approval", result.stderr)
         for path, manifest in ((self.scenario_path, self.scenario), (self.prepared_path, self.prepared)):
             fingerprint = subprocess.run([sys.executable, str(SCRIPT), "fingerprint", "--manifest",
                                           str(path)], capture_output=True, text=True)
@@ -505,7 +505,7 @@ class ReviewGateTests(unittest.TestCase):
                 manifest["content"]["storyboard"] = [frame for frame in manifest["content"]["storyboard"]
                                                        if frame["role"] != role]
                 self.write(self.prepared_path, manifest)
-                with self.assertRaisesRegex(GATE.ReviewGateError, f"отсутствуют роли: {role}"):
+                with self.assertRaisesRegex(GATE.ReviewGateError, f"Missing storyboard roles: {role}"):
                     GATE.load_manifest(self.prepared_path)
 
     def test_storyboard_fields_and_ids_are_validated(self):
@@ -524,7 +524,7 @@ class ReviewGateTests(unittest.TestCase):
         extra.write_text("Exists, but was not declared", encoding="utf-8")
         self.prepared["content"]["storyboard"][0]["file"] = "other/preview.png"
         self.refresh_review()
-        with self.assertRaisesRegex(GATE.ReviewGateError, "не объявлен"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "not listed"):
             GATE.load_manifest(self.prepared_path)
         self.prepared["content"]["storyboard"][0]["file"] = "./preview.png"
         self.refresh_review()
@@ -607,14 +607,14 @@ class ReviewGateTests(unittest.TestCase):
                 else:
                     manifest["scenario_sha256"] = "0" * 64
                 self.write(self.prepared_path, manifest)
-                with self.assertRaisesRegex(GATE.ReviewGateError, "рецензия устарела"):
+                with self.assertRaisesRegex(GATE.ReviewGateError, "frame review is outdated"):
                     GATE.load_manifest(self.prepared_path)
 
     def test_updated_frame_hash_requires_a_new_visual_review(self):
         self.asset.write_text("Changed frame bytes", encoding="utf-8")
         self.prepared["files"][0]["sha256"] = GATE.file_sha256(self.asset)
         self.write(self.prepared_path, self.prepared)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "рецензия устарела"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "frame review is outdated"):
             GATE.load_manifest(self.prepared_path)
 
     def test_changing_only_review_preserves_material_digest_but_invalidates_human_approval(self):
@@ -623,7 +623,7 @@ class ReviewGateTests(unittest.TestCase):
         self.prepared["content"]["story_review"]["reference"] = "test://another-review"
         self.write(self.prepared_path, self.prepared)
         GATE.load_manifest(self.prepared_path)
-        with self.assertRaisesRegex(GATE.ReviewGateError, "контента устарело"):
+        with self.assertRaisesRegex(GATE.ReviewGateError, "prepared content approval is outdated"):
             self.check_recording()
 
     def test_legacy_load_and_fingerprint_work_but_recording_and_prepared_approval_are_blocked(self):
@@ -648,10 +648,10 @@ class ReviewGateTests(unittest.TestCase):
                     "approved_at": "2020-01-01T00:00:00Z",
                     "human_decision": json.loads(self.decision(self.prepared_path).read_text())}
                 self.write(self.approvals / "prepared-content.approval.json", historical_receipt)
-                with self.assertRaisesRegex(GATE.ReviewGateError, "schema_version: 2 у обоих"):
+                with self.assertRaisesRegex(GATE.ReviewGateError, "schema_version 2 in both"):
                     self.check_recording()
                 before = (self.approvals / "prepared-content.approval.json").read_bytes()
-                with self.assertRaisesRegex(GATE.ReviewGateError, "schema_version: 2 у обоих"):
+                with self.assertRaisesRegex(GATE.ReviewGateError, "schema_version 2 in both"):
                     self.approve_prepared()
                 self.assertEqual((self.approvals / "prepared-content.approval.json").read_bytes(), before)
 

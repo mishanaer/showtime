@@ -52,7 +52,7 @@ def build(destination):
         path = art / phone["source"]
         image.save(path)
         phone["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
-    write_json(art / "phones.json", {"schema_version": 1, "source": "Showtime schematic frames",
+    write_json(art / "phones.json", {"schema_version": 1, "source": "showtime schematic frames",
                                      "phones": catalog["phones"]})
     pattern = Image.new("RGBA", (512, 512))
     draw = ImageDraw.Draw(pattern)
@@ -65,7 +65,7 @@ def build(destination):
                 "graphite":["#252a33","#31394b","#202633","#414654"],
                 "pastel":["#b4cede","#dfcee5","#bfd6d8","#e3d8e7"],
                 "warm":["#e8ba9f","#dcb4bf","#ead9b1","#d5aba0"]}
-    write_json(art / "telegram-gradients.json", {"schema_version":1,"source":"Showtime",
+    write_json(art / "telegram-gradients.json", {"schema_version":1,"source":"showtime",
         "gradients":[{"id":key,"label":key.title(),"palette":value} for key,value in palettes.items()]})
     tap = destination / "assets/tap/native"
     tap.mkdir(parents=True)
@@ -84,8 +84,8 @@ def build(destination):
     write_json(art / "provenance.json", {"schema_version":1, "source":"Drawn by scripts/package_public.py", "assets":assets})
     profile_path = destination / "profiles/telegram-product.json"
     profile = json.loads(profile_path.read_text())
-    profile["background"].update(palette=palettes["pastel"], pattern_name="Dot grid", palette_note="Showtime pastel")
-    profile["comparison"]["labels"] = ["Telegram original", "Showtime app recording"]
+    profile["background"].update(palette=palettes["pastel"], pattern_name="Dot grid", palette_note="showtime pastel")
+    profile["comparison"]["labels"] = ["Telegram original", "showtime app recording"]
     profile["tap"]["tint_note"] = "Tint for the bundled procedural contact ring."
     profile["notes"] = ["Schematic frame sizes follow the configured device geometry.",
                         "Only application text is visible in product videos."]

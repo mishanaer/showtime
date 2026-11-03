@@ -1,9 +1,9 @@
 ---
 name: showtime
-description: Create, revise, or review short product videos from a real app. Use for app demos, storyboards, or existing Showtime videos. Supports iOS Simulator capture and local composition.
+description: Create, revise, or review short product videos from a real app. Use for app demos, storyboards, or existing showtime videos. Supports iOS Simulator capture and local composition.
 ---
 
-# Showtime
+# showtime
 
 Demonstrate one product benefit through real app interaction. Continue existing work at the relevant stage; reuse footage when it supports the requested change.
 
@@ -28,7 +28,7 @@ Ask one question at a time, in the conversation language. Treat information alre
 
 ## Workspace
 
-This file's directory is the Showtime root (`SHOWTIME`). Resolve it and invoke scripts by absolute path. Follow the target app's instructions. Read the relevant run's `run.json` and artifacts; update progress with `scripts/showtime_run.py init/note/status`. Progress is not approval.
+This file's directory is the showtime root (`SHOWTIME`). Resolve it and invoke scripts by absolute path. Follow the target app's instructions. Read the relevant run's `run.json` and artifacts; update progress with `scripts/showtime_run.py init/note/status`. Progress is not approval.
 
 Keep the installed skill and assets read-only during production. Write into the video's run directory; preserve previous takes and other agents' work. Use historical pilots only when supplied as references.
 

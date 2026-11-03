@@ -64,7 +64,7 @@ class EditEventsTests(unittest.TestCase):
                 del event[missing]
                 # A plausible CLI duration must not manufacture the absent contact evidence.
                 event["command_duration"] = .7
-                with self.assertRaisesRegex(ValueError, "contact_start/contact_end"):
+                with self.assertRaisesRegex(ValueError, "contact_start and contact_end"):
                     EDITOR.visual_gesture(event)
 
     def test_invalid_or_outside_contact_and_missing_provenance_fail(self):
@@ -98,7 +98,7 @@ class EditEventsTests(unittest.TestCase):
         self.tap.update(source_start=.2, source_end=.3)
         self.observations["steps"][0].update(response_start=.3, transition_end=.32,
                                                result_ready=.32, overlays_clear=.3)
-        with self.assertRaisesRegex(ValueError, "перед касанием"):
+        with self.assertRaisesRegex(ValueError, "before contact"):
             self.plan()
         self.tap.update(source_start=2.0, source_end=2.1)
         self.observations["steps"][0].update(response_start=2.1, transition_end=2.12,
@@ -142,7 +142,7 @@ class EditEventsTests(unittest.TestCase):
         gesture = EDITOR.visual_gesture(self.tap)
         for intervals in ([[0, 120]], [[100, 160], [110, 170]]):
             with self.subTest(intervals=intervals):
-                with self.assertRaisesRegex(ValueError, "потерял или продублировал"):
+                with self.assertRaisesRegex(ValueError, "lost or duplicated"):
                     EDITOR.remap_gestures([gesture], intervals)
 
     def test_clock_does_not_attest_to_video_cadence(self):
@@ -196,14 +196,14 @@ class NativeActionJournalTests(unittest.TestCase):
         self.assertAlmostEqual(EDITOR.visual_gesture(event)["hold_seconds"], .7)
 
     def test_missing_up_dispatch_does_not_write_a_contact_event(self):
-        with self.assertRaisesRegex(SystemExit, "удержание не принято"):
+        with self.assertRaisesRegex(SystemExit, "hold was rejected"):
             self.run_action(["Sending Touch <hidden>", "HID event performed successfully."],
                             [1100, 1200, 1210, 1950])
         self.assertFalse(self.journal.exists())
         self.assertTrue((self.root / "actions-menu.dispatch.json").exists())
 
     def test_nonincreasing_dispatch_does_not_write_contact_event(self):
-        with self.assertRaisesRegex(SystemExit, "удержание не принято"):
+        with self.assertRaisesRegex(SystemExit, "hold was rejected"):
             self.run_action(["Sending Touch <hidden>", "HID event performed successfully.",
                              "Sending Touch <hidden>", "HID event performed successfully."],
                             [1100, 1200, 1210, 1200, 1220, 1950])

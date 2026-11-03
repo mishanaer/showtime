@@ -80,7 +80,7 @@ def diagnose(config_path, record=False, axe=None, tap_sequence=None):
                 if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
                     mismatches.append(entry["file"])
             check("asset_hashes", not mismatches, mismatches or "bundled checksums match",
-                  "Restore the bundled assets from the same Showtime version.")
+                  "Restore the bundled assets from the same showtime version.")
 
         if Path(config["background"]["pattern"]).suffix.lower() == ".svg" and config["background"].get("pattern_opacity", 0) > 0:
             check("node", shutil.which("node"), shutil.which("node") or "SVG pattern needs Node",

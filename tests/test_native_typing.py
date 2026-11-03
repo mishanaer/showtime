@@ -78,7 +78,7 @@ class NativeTypingTests(unittest.TestCase):
         self.assertGreaterEqual(plan["intervals"][-1][1], 60)
 
     def test_empty_unicode_and_control_text_fail_before_dispatch(self):
-        for text in ("", "Alpha 👋", "Привет", "line\nbreak", "tab\there"):
+        for text in ("", "Alpha 👋", "café", "line\nbreak", "tab\there"):
             with self.subTest(text=text):
                 self.text.write_text(text, encoding="utf-8")
                 with mock.patch.object(sys, "argv", self.args("--type", "type_text", "--text-file", self.text)), \

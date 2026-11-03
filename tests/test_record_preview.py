@@ -67,7 +67,7 @@ class RecordPreviewTests(unittest.TestCase):
 
     def test_preview_without_scenario_approval_is_blocked(self):
         gate, popen, code = self.run_recorder(["--preparation-preview"],
-            error=RECORDER.ReviewGateError("Нет согласования сценария"))
+            error=RECORDER.ReviewGateError("Missing scenario approval"))
         self.assertEqual(code, 2)
         gate.assert_called_once_with(self.scenario, None, self.approvals)
         popen.assert_not_called()

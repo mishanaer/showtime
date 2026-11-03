@@ -104,7 +104,7 @@ class CaptureContractTests(unittest.TestCase):
     def test_editor_rejects_completed_rehearsal(self):
         self.clock["purpose"] = "preparation-preview"
         self.finalized()
-        with self.assertRaisesRegex(ValueError, "финального"):
+        with self.assertRaisesRegex(ValueError, "final video"):
             EDITOR.validate_capture_clock(self.journal(), self.capture)
 
     def test_editor_rejects_unfinished_failed_or_drifted_recording(self):

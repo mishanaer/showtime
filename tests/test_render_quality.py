@@ -180,7 +180,7 @@ class RenderQualityTests(unittest.TestCase):
                 self.assertEqual(QUALITY.delivery_frame_count(duration), expected)
         for duration in (599/60, 1201/60, 2, 21):
             with self.subTest(duration=duration):
-                with self.assertRaisesRegex(ValueError, "10–20 секунд"):
+                with self.assertRaisesRegex(ValueError, "10–20 seconds"):
                     QUALITY.delivery_frame_count(duration)
 
     def test_delivery_preflight_rejects_invalid_durations(self):
@@ -205,8 +205,8 @@ class RenderQualityTests(unittest.TestCase):
     def test_error_message_does_not_mislabel_duration_as_fps_failure(self):
         report = self.audit(probe_fixture(count=1201), delivery=True)
         error = QUALITY.RenderQualityError(report)
-        self.assertIn("10–20 секунд", str(error))
-        self.assertNotIn("не прошёл проверку 60 fps", str(error))
+        self.assertIn("10–20 seconds", str(error))
+        self.assertNotIn("failed 60 fps validation", str(error))
 
 
 if __name__ == "__main__":

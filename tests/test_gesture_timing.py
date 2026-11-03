@@ -67,7 +67,7 @@ class GestureFrameMapTests(unittest.TestCase):
     def test_hold_requires_explicit_contact_timing_provenance(self):
         for provenance in (None, "", "command_duration", "guessed"):
             with self.subTest(provenance=provenance):
-                with self.assertRaisesRegex(ValueError, "происхождение времени"):
+                with self.assertRaisesRegex(ValueError, "source of the contact"):
                     self.frame_map(self.hold(provenance=provenance))
         for provenance in ("hid_dispatch_estimate", "observed", "measured"):
             with self.subTest(provenance=provenance):

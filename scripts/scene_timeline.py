@@ -36,13 +36,13 @@ _ROUND_EPSILON = 1e-9
 
 def _number(value, label, minimum=0):
     if type(value) not in (int, float) or not math.isfinite(value) or value < minimum:
-        raise SceneTimelineError(f"{label}: требуется конечное число не меньше {minimum}.")
+        raise SceneTimelineError(f"{label} must be a finite number greater than or equal to {minimum}.")
     return float(value)
 
 
 def _identifier(value, label):
     if not isinstance(value, str) or not value.strip():
-        raise SceneTimelineError(f"{label}: требуется непустой идентификатор.")
+        raise SceneTimelineError(f"{label} needs a nonempty identifier.")
     return value
 
 
@@ -71,61 +71,61 @@ def plan_scene_intervals(raw_events, observations, duration, source_sha256,
 raw_events accepts the existing events list or its {"events": [...]} wrapper.
 Only reviewed observations tied to the actual source SHA-256 are accepted.
 """
-    duration = _number(duration, "Длительность записи")
+    duration = _number(duration, "Recording duration")
     if duration <= 0:
-        raise SceneTimelineError("Длительность записи должна быть больше нуля.")
+        raise SceneTimelineError("Recording duration must be positive.")
     if type(fps) is not int or fps <= 0:
-        raise SceneTimelineError("fps должен быть положительным целым числом.")
-    lead_seconds = _number(lead_seconds, "Время перед действием")
+        raise SceneTimelineError("Set fps to a positive integer.")
+    lead_seconds = _number(lead_seconds, "Lead time before the action")
     if not isinstance(source_sha256, str) or not _HASH.fullmatch(source_sha256):
-        raise SceneTimelineError("Нужен фактический SHA-256 исходной записи: 64 строчных hex-символа.")
+        raise SceneTimelineError("Supply the actual SHA-256 of the recording as 64 lowercase hexadecimal characters.")
     if not isinstance(observations, dict):
-        raise SceneTimelineError("Наблюдения должны быть объектом JSON.")
+        raise SceneTimelineError("Supply observations as a JSON object.")
     if type(observations.get("schema_version")) is not int or observations["schema_version"] != 1:
-        raise SceneTimelineError("Для наблюдений требуется schema_version: 1.")
+        raise SceneTimelineError("Use schema_version 1 for observations.")
     if observations.get("review_status") != "reviewed":
-        raise SceneTimelineError("Наблюдения ещё не проверены: требуется review_status: reviewed после просмотра записи.")
+        raise SceneTimelineError("Review the recording before setting review_status to reviewed.")
     if observations.get("capture_sha256") != source_sha256:
-        raise SceneTimelineError("Наблюдения относятся к другой записи: SHA-256 не совпадает. Проверьте текущий исходник.")
+        raise SceneTimelineError("The observations refer to a different recording. Check the source SHA-256.")
 
     events = raw_events.get("events") if isinstance(raw_events, dict) else raw_events
     if not isinstance(events, list) or not events:
-        raise SceneTimelineError("Нужен непустой список исходных действий events.")
+        raise SceneTimelineError("Supply a nonempty events list of recorded actions.")
     event_ids, actions = [], []
     previous_start = -1.0
     for index, event in enumerate(events):
         if not isinstance(event, dict):
-            raise SceneTimelineError(f"Действие {index}: ожидается объект.")
-        event_id = _identifier(event.get("id"), f"Действие {index}, id")
+            raise SceneTimelineError(f"Action {index} must be an object.")
+        event_id = _identifier(event.get("id"), f"Action {index} ID")
         if event_id in event_ids:
-            raise SceneTimelineError(f"Повторяющийся id исходного действия: {event_id}.")
+            raise SceneTimelineError(f"Duplicate action ID: {event_id}.")
         start = _number(event.get("source_start"), f"{event_id}, source_start")
         end = _number(event.get("source_end"), f"{event_id}, source_end")
         if not start <= end <= duration or start < previous_start:
-            raise SceneTimelineError(f"Действие {event_id}: source_start/source_end должны идти по времени и находиться внутри записи.")
+            raise SceneTimelineError(f"Action {event_id}: timestamps must be in order and within the recording.")
         previous_start = start
         event_ids.append(event_id)
         actions.append((start, end))
 
     steps = observations.get("steps")
     if not isinstance(steps, list):
-        raise SceneTimelineError("В наблюдениях нужен список steps для всех действий.")
+        raise SceneTimelineError("Add a steps list with an observation for every action.")
     step_ids = []
     for index, step in enumerate(steps):
         if not isinstance(step, dict):
-            raise SceneTimelineError(f"Наблюдение {index}: ожидается объект.")
-        event_id = _identifier(step.get("event_id"), f"Наблюдение {index}, event_id")
+            raise SceneTimelineError(f"Observation {index} must be an object.")
+        event_id = _identifier(step.get("event_id"), f"Observation {index} event_id")
         if event_id in step_ids:
-            raise SceneTimelineError(f"Повторяющееся наблюдение действия: {event_id}.")
+            raise SceneTimelineError(f"Duplicate observation for action {event_id}.")
         if event_id not in event_ids:
-            raise SceneTimelineError(f"Наблюдение ссылается на неизвестное действие: {event_id}.")
+            raise SceneTimelineError(f"Observation refers to unknown action {event_id}.")
         step_ids.append(event_id)
     if step_ids != event_ids:
-        raise SceneTimelineError("Для каждого действия требуется ровно одно наблюдение steps в порядке исходных действий.")
+        raise SceneTimelineError("Supply exactly one observation per action in source order.")
 
     available_frames = _floor_frame(duration, fps)
     if available_frames <= 0:
-        raise SceneTimelineError("В записи нет ни одного полного кадра при заданном fps.")
+        raise SceneTimelineError("The recording contains no complete frame at the selected frame rate.")
     intervals, step_checks = [], []
     for event_id, (start, end), step in zip(event_ids, actions, steps):
         response = _number(step.get("response_start"), f"{event_id}, response_start")
@@ -133,14 +133,14 @@ Only reviewed observations tied to the actual source SHA-256 are accepted.
                    for name in ("transition_end", "result_ready", "overlays_clear")}
         read_seconds = _number(step.get("read_seconds"), f"{event_id}, read_seconds")
         if not start <= response <= duration:
-            raise SceneTimelineError(f"{event_id}: response_start не может предшествовать действию или выходить за запись.")
+            raise SceneTimelineError(f"{event_id}: response_start must fall between the action and the end of the recording.")
         if any(not response <= value <= duration for value in markers.values()):
-            raise SceneTimelineError(f"{event_id}: отметки завершения должны быть после response_start и внутри записи.")
+            raise SceneTimelineError(f"{event_id}: completion markers must fall between response_start and the end of the recording.")
         ready = max(markers.values())
         # A response can occur during a long command. Preserve its release/end too.
         required_end = max(end, ready + read_seconds)
         if not math.isfinite(required_end) or required_end > duration + _ROUND_EPSILON:
-            raise SceneTimelineError(f"{event_id}: не хватает записанного финала. Нужно до {required_end:.6f} с, запись заканчивается в {duration:.6f} с; перезапишите с полной паузой результата.")
+            raise SceneTimelineError(f"{event_id}: the recording ends too soon. Need {required_end:.6f} s, but the take ends at {duration:.6f} s. Record the full reading pause.")
         first = max(0, _floor_frame(start - lead_seconds, fps))
         # The interval end is exclusive. Even with zero reading time, retain
         # the frame at/after every completion marker, not only the preceding
@@ -148,7 +148,7 @@ Only reviewed observations tied to the actual source SHA-256 are accepted.
         last = max(_ceil_frame(required_end, fps), _floor_frame(start, fps) + 1,
                    _ceil_frame(ready, fps) + 1)
         if last > available_frames:
-            raise SceneTimelineError(f"{event_id}: не хватает полного кадра для результата и паузы. Нужно {last} кадров, доступно {available_frames}; сокращать паузу нельзя.")
+            raise SceneTimelineError(f"{event_id}: not enough complete frames for the result and reading pause. Need {last} frames, but only {available_frames} are available.")
         intervals.append([first, last])
         step_checks.append({"event_id": event_id, "source_action": [start, end],
                             "response_start": response, **markers,
@@ -157,22 +157,22 @@ Only reviewed observations tied to the actual source SHA-256 are accepted.
 
     protected = observations.get("protected_ranges")
     if not isinstance(protected, list):
-        raise SceneTimelineError("В наблюдениях нужен protected_ranges; укажите пустой список, если защищённых движений нет.")
+        raise SceneTimelineError("Add protected_ranges to the observations. Use an empty list when no motion needs protection.")
     protected_checks = []
     for index, entry in enumerate(protected):
         if not isinstance(entry, dict):
-            raise SceneTimelineError(f"Защищённое движение {index}: ожидается объект.")
-        start = _number(entry.get("start"), f"Защищённое движение {index}, start")
-        end = _number(entry.get("end"), f"Защищённое движение {index}, end")
+            raise SceneTimelineError(f"Protected range {index} must be an object.")
+        start = _number(entry.get("start"), f"Protected range {index} start")
+        end = _number(entry.get("end"), f"Protected range {index} end")
         reason = entry.get("reason")
         if not isinstance(reason, str) or not reason.strip():
-            raise SceneTimelineError(f"Защищённое движение {index}: нужен непустой reason.")
+            raise SceneTimelineError(f"Add a nonempty reason to protected range {index}.")
         if not start < end <= duration:
-            raise SceneTimelineError(f"Защищённое движение {index}: диапазон должен иметь положительную длительность и помещаться в запись.")
+            raise SceneTimelineError(f"Protected range {index} must have positive duration and fit within the recording.")
         first = _floor_frame(start, fps)
         last = max(_ceil_frame(end, fps), first + 1)
         if last > available_frames:
-            raise SceneTimelineError(f"Защищённое движение {index}: не хватает полного записанного кадра; диапазон нельзя обрезать.")
+            raise SceneTimelineError(f"Protected range {index} needs a complete recorded frame. Keep the full range.")
         intervals.append([first, last])
         protected_checks.append({"start": start, "end": end, "reason": reason,
                                  "frames": [first, last]})
@@ -181,7 +181,7 @@ Only reviewed observations tied to the actual source SHA-256 are accepted.
     # Check actual frame coverage, not just success of interval construction.
     for required in intervals:
         if not any(first <= required[0] and last >= required[1] for first, last in merged):
-            raise SceneTimelineError("Не удалось сохранить действие, чтение результата или защищённое движение целиком.")
+            raise SceneTimelineError("The edit cannot preserve the full action, reading pause, or protected motion.")
     cuts = [{"source_out": left[1] / fps, "next_source_in": right[0] / fps,
              "removed_seconds": (right[0] - left[1]) / fps}
             for left, right in zip(merged, merged[1:])]

@@ -13,18 +13,18 @@ def gesture_frame_map(event, frame_count, anchor_frame, fps=60):
     not an extra frame preceding it. Recording fps does not enter this mapping.
     """
     if not 0 <= anchor_frame < frame_count:
-        raise ValueError("Опорный кадр жеста вне исходной последовательности")
+        raise ValueError("The gesture anchor falls outside the source sequence")
     if event.get("type", "tap") != "long_press":
         return list(range(frame_count)), 0
     duration = event.get("hold_seconds")
     if (isinstance(duration, bool) or not isinstance(duration, (float, int))
             or not math.isfinite(duration) or not 0 < duration <= 60):
-        raise ValueError("Для удержания требуется hold_seconds от 0 до 60 секунд из журнала контакта")
+        raise ValueError("For a hold, set hold_seconds to the measured contact duration (over 0 and up to 60 seconds)")
     if event.get("hold_timing") not in ("hid_dispatch_estimate", "observed", "measured"):
-        raise ValueError("Для удержания укажите происхождение времени hold_timing; длительность команды не заменяет контакт")
+        raise ValueError("For a hold, set hold_timing to the source of the contact measurement")
     count = round(duration * fps)
     if count < 1:
-        raise ValueError("Удержание короче одного представимого кадра финального видео; проверьте время контакта")
+        raise ValueError("The hold is shorter than one output frame. Check the contact timing.")
     return list(range(anchor_frame)) + [anchor_frame] * count + list(range(anchor_frame + 1, frame_count)), count
 
 
