@@ -11,7 +11,6 @@ Record a 10–20 second demo of your app in iOS Simulator. showtime adds a phone
 
 ## How it works
 
-1. **Prepare the scene.** After you approve the scenario, the agent sets up the app and builds a storyboard from real screens in your chosen framing.
-2. **Record the interaction.** Once you approve the storyboard, the agent performs the actions in iOS Simulator. showtime records the screen and logs where and when each tap occurs.
-3. **Edit the take.** The agent watches the recording to decide where to cut. It trims idle time, keeps transitions at their original speed, and leaves the result on screen long enough to read.
-4. **Export and review.** showtime adds the phone frame, background, and timed tap indicators. It checks the MP4’s dimensions, duration, and frame rate. The agent watches the video on repeat to catch rough cuts or a visible jump at the loop.
+showtime combines instructions for your AI agent with scripts for recording and editing video.
+
+The agent follows your scenario in iOS Simulator while the scripts record the screen and track each tap. The agent chooses where to cut. The scripts trim the recording, add the phone frame and tap indicators, and export the MP4.
