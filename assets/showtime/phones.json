@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "source": "Showtime schematic frames",
+  "phones": [
+    {
+      "id": "iphone-18-pro-silver",
+      "model": "iPhone 18 Pro",
+      "color": "Silver",
+      "source": "phones/iphone-18-pro-silver.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        69,
+        72,
+        69,
+        72
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "93fb49907b44d0ca600cb87a93219f97b6a27a42977b0681f0d2c2ac4ad5f25b"
+    },
+    {
+      "id": "iphone-18-pro-black",
+      "model": "iPhone 18 Pro",
+      "color": "Black",
+      "source": "phones/iphone-18-pro-black.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        69,
+        72,
+        69,
+        72
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "310eb0fda4c9c49640506c685c60ddf830419ca342a098aece87f8fd7d1bb25f"
+    },
+    {
+      "id": "iphone-18-pro-burgundy",
+      "model": "iPhone 18 Pro",
+      "color": "Burgundy",
+      "source": "phones/iphone-18-pro-burgundy.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        69,
+        72,
+        69,
+        72
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "830e3d14520aa9cdcfc29155d1d98eaede792234a25db14ac98943726d1974cf"
+    },
+    {
+      "id": "iphone-18-pro-glacier",
+      "model": "iPhone 18 Pro",
+      "color": "Glacier",
+      "source": "phones/iphone-18-pro-glacier.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        69,
+        72,
+        69,
+        72
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "e6250d6653c38d8f3a2002de2d83c089866335821b915a4f84282678de086061"
+    },
+    {
+      "id": "iphone-18-pro-max-silver",
+      "model": "iPhone 18 Pro Max",
+      "color": "Silver",
+      "source": "phones/iphone-18-pro-max-silver.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        66,
+        75,
+        66,
+        75
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "562a33925fffda0f6353870893f8181cf3975699fc947fd43f7becaa7340148d"
+    },
+    {
+      "id": "iphone-18-pro-max-black",
+      "model": "iPhone 18 Pro Max",
+      "color": "Black",
+      "source": "phones/iphone-18-pro-max-black.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        66,
+        75,
+        66,
+        75
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "b47ccaf2aae36488405446e710f6dc4224979fd101871bc76f3bba12cfb970e1"
+    },
+    {
+      "id": "iphone-18-pro-max-burgundy",
+      "model": "iPhone 18 Pro Max",
+      "color": "Burgundy",
+      "source": "phones/iphone-18-pro-max-burgundy.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        66,
+        75,
+        66,
+        75
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "6b826db57b684637c2c99f2b259bc0d865d33a6be9820d133f8f737252877a23"
+    },
+    {
+      "id": "iphone-18-pro-max-glacier",
+      "model": "iPhone 18 Pro Max",
+      "color": "Glacier",
+      "source": "phones/iphone-18-pro-max-glacier.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        66,
+        75,
+        66,
+        75
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "0b937f78acf2bbcdf71c58f5c8ea7715e2f09f59832126804619aab9fdd2ee29"
+    },
+    {
+      "id": "iphone-17-black",
+      "model": "iPhone 17",
+      "color": "Black",
+      "source": "phones/iphone-17-black.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "08dc3577649c4523801ab72b05e1aeee1539bb25b42821ec0572800bd693e5f5"
+    },
+    {
+      "id": "iphone-17-lavender",
+      "model": "iPhone 17",
+      "color": "Lavender",
+      "source": "phones/iphone-17-lavender.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "d2dbb275b2a2c010356dda7629a111924d7ab15769be75e2979706e436c97cbd"
+    },
+    {
+      "id": "iphone-17-mist-blue",
+      "model": "iPhone 17",
+      "color": "Mist Blue",
+      "source": "phones/iphone-17-mist-blue.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "e85090107acab8fb8ffbb74cd99f2d7e10112e759ec1b221ee076a1419950da9"
+    },
+    {
+      "id": "iphone-17-sage",
+      "model": "iPhone 17",
+      "color": "Sage",
+      "source": "phones/iphone-17-sage.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "05b6a8c7a5f96380b436f215e30030bdbd0aceffe6832d8e11a9e96b3a9148df"
+    },
+    {
+      "id": "iphone-17-white",
+      "model": "iPhone 17",
+      "color": "White",
+      "source": "phones/iphone-17-white.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "2e86eb96a6e98f62b9ac4a486e03a3f564fbb081dbafb22c7ea5599083f87fe6"
+    },
+    {
+      "id": "iphone-17-pro-silver",
+      "model": "iPhone 17 Pro",
+      "color": "Silver",
+      "source": "phones/iphone-17-pro-silver.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "40af42a17fe4561c37bd2628c8c888d45fbe4ed2ae6e122f09a08b79116b64f8"
+    },
+    {
+      "id": "iphone-17-pro-cosmic-orange",
+      "model": "iPhone 17 Pro",
+      "color": "Cosmic Orange",
+      "source": "phones/iphone-17-pro-cosmic-orange.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "15d248702f52f384b0f56e1a1ff6892cd5c0afb8ccf06dbb93cffecc73e770e2"
+    },
+    {
+      "id": "iphone-17-pro-deep-blue",
+      "model": "iPhone 17 Pro",
+      "color": "Deep Blue",
+      "source": "phones/iphone-17-pro-deep-blue.png",
+      "source_size": [
+        1350,
+        2760
+      ],
+      "screen_insets": [
+        70,
+        73,
+        70,
+        73
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "241faa582367c6f4ac592242bbcfbb7ca79a086218159dc24a0a1c885ed6ae37"
+    },
+    {
+      "id": "iphone-17-pro-max-silver",
+      "model": "iPhone 17 Pro Max",
+      "color": "Silver",
+      "source": "phones/iphone-17-pro-max-silver.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        67,
+        76,
+        67,
+        76
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "8e6de7d11b33f909f58a7161d37162926fd14e22375318bc839d11015f913b1d"
+    },
+    {
+      "id": "iphone-17-pro-max-cosmic-orange",
+      "model": "iPhone 17 Pro Max",
+      "color": "Cosmic Orange",
+      "source": "phones/iphone-17-pro-max-cosmic-orange.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        67,
+        76,
+        67,
+        76
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "07ff51e7400cd972eb270e16e0896e49f216818b679ae32b7672f76282374b4c"
+    },
+    {
+      "id": "iphone-17-pro-max-deep-blue",
+      "model": "iPhone 17 Pro Max",
+      "color": "Deep Blue",
+      "source": "phones/iphone-17-pro-max-deep-blue.png",
+      "source_size": [
+        1470,
+        3000
+      ],
+      "screen_insets": [
+        67,
+        76,
+        67,
+        76
+      ],
+      "screen_radius_fraction": [
+        0.09,
+        0.042
+      ],
+      "sha256": "6931b679864abf8779c46ba3abb6130f52d7a54270e130a0e0c8d7bffbc8763e"
+    }
+  ]
+}

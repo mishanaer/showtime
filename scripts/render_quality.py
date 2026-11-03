@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""Check decoded 60 Hz cadence on exported videos.
+
+audit_delivery also checks final duration. Cadence alone cannot establish that
+each image is distinct or that the captured application animated smoothly.
+"""
+
+import argparse
+from fractions import Fraction
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+from media_io import save_json
+
+
+TARGET_FPS = Fraction(60)
+FRAME_PERIOD = 1 / TARGET_FPS
+TIMESTAMP_TOLERANCE = Fraction(1, 2000)  # 0.5 ms, including muxer rounding.
+RATE_TOLERANCE = Fraction(1, 200)  # 0.005 fps; 59.94 is not exact 60.
+DELIVERY_MIN_FRAMES = 600
+DELIVERY_MAX_FRAMES = 1200
+
+
+class RenderQualityError(RuntimeError):
+    def __init__(self, report):
+        self.report = report
+        reasons = "; ".join(item["message"] for item in report["failures"])
+        super().__init__("Итоговый ролик не прошёл проверку: " + reasons)
+
+
+def _fraction(value):
+    """Fraction rejects NaN/Infinity as well as absent/invalid timestamps."""
+    if value is None or isinstance(value, bool):
+        raise ValueError("missing numeric value")
+    return Fraction(str(value))
+
+
+def _seconds(value, integer_key, seconds_key, time_base):
+    if integer_key in value:
+        return _fraction(value[integer_key]) * time_base
+    return _fraction(value.get(seconds_key))
+
+
+def _file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _new_report(path):
+    return {
+        "schema_version": 1,
+        "scope": "final_render_only",
+        "output": str(path),
+        "output_sha256": None,
+        "passed": False,
+        "render_cadence_60fps": "failed",
+        "motion_fidelity": "unverified",
+        "policy": {
+            "target_fps": "60/1",
+            "timestamp_tolerance_ms": float(TIMESTAMP_TOLERANCE * 1000),
+            "observed_rate_tolerance_fps": float(RATE_TOLERANCE),
+            "input_capture_may_be_vfr": True,
+            "input_capture_fps_requirement": None,
+            "repeated_output_frames_allowed": True,
+            "minimum_decoded_frames": 2,
+        },
+        "failures": [],
+        "limitations": [
+            "Only the supplied file is measured.",
+            "PTS and durations establish output frame timing, not unique visual states or motion fidelity.",
+            "Exporting at 60 fps does not reconstruct motion absent from the input recording.",
+            "This audit invokes ffprobe only; it never applies fps filters, interpolation or timestamp repair.",
+        ],
+    }
+
+
+def _fail(report, code, message, **details):
+    report["failures"].append({"code": code, "message": message, **details})
+
+
+def _audit_timing(data, report):
+    streams = data.get("streams", [])
+    if not streams:
+        _fail(report, "missing_video_stream", "Не найден видеопоток")
+        return
+    stream = streams[0]
+    report["stream"] = stream
+    try:
+        time_base = _fraction(stream.get("time_base"))
+        if time_base <= 0:
+            raise ValueError("non-positive time base")
+    except (ValueError, ZeroDivisionError):
+        _fail(report, "invalid_time_base", "Не определена временная шкала итогового ролика")
+        return
+    try:
+        average_rate = _fraction(stream.get("avg_frame_rate"))
+    except (ValueError, ZeroDivisionError):
+        average_rate = None
+    if average_rate != TARGET_FPS:
+        _fail(report, "average_rate_not_exact_60", "Средняя частота потока не равна ровно 60/1",
+              actual=stream.get("avg_frame_rate"))
+    try:
+        stream_duration = _seconds(stream, "duration_ts", "duration", time_base)
+        if stream_duration <= 0:
+            raise ValueError("non-positive duration")
+    except (ValueError, ZeroDivisionError):
+        stream_duration = None
+        _fail(report, "invalid_stream_duration", "Отсутствует корректная длительность видеопотока")
+
+    frames = data.get("frames", [])
+    report["decoded_frame_count"] = len(frames)
+    if len(frames) < 2:
+        _fail(report, "too_few_frames", "Для проверки нужны минимум два декодированных кадра")
+        return
+    timestamps, durations = [], []
+    bad_pts, bad_durations = [], []
+    for index, frame in enumerate(frames):
+        try:
+            timestamps.append(_seconds(frame, "best_effort_timestamp", "best_effort_timestamp_time", time_base))
+        except (ValueError, ZeroDivisionError):
+            bad_pts.append(index)
+        try:
+            if "duration" in frame or "duration_time" in frame:
+                duration = _seconds(frame, "duration", "duration_time", time_base)
+            else:
+                duration = _seconds(frame, "pkt_duration", "pkt_duration_time", time_base)
+            if duration <= 0:
+                raise ValueError("non-positive frame duration")
+            durations.append(duration)
+        except (ValueError, ZeroDivisionError):
+            bad_durations.append(index)
+    if bad_pts:
+        _fail(report, "invalid_frame_pts", "Есть кадры без конечного числового PTS", count=len(bad_pts), frame_indices=bad_pts[:20])
+    if bad_durations:
+        _fail(report, "invalid_frame_duration", "Есть кадры без корректной длительности", count=len(bad_durations), frame_indices=bad_durations[:20])
+    if durations:
+        report["frame_duration_ms"] = {"min": float(min(durations)*1000), "max": float(max(durations)*1000), "last": float(durations[-1]*1000)}
+    if not bad_durations:
+        wrong_durations = [i for i, duration in enumerate(durations) if abs(duration-FRAME_PERIOD) > TIMESTAMP_TOLERANCE]
+        if wrong_durations:
+            _fail(report, "frame_duration_not_60hz", "Длительность кадров отличается от 1/60 с",
+                  count=len(wrong_durations), frame_indices=wrong_durations[:20])
+    if bad_pts:
+        return
+
+    intervals = [b-a for a, b in zip(timestamps, timestamps[1:])]
+    nonmonotonic = [i+1 for i, dt in enumerate(intervals) if dt <= 0]
+    if nonmonotonic:
+        _fail(report, "nonmonotonic_pts", "PTS кадров повторяются или идут назад", frame_indices=nonmonotonic[:20])
+    step_errors = [abs(dt-FRAME_PERIOD) for dt in intervals]
+    grid_errors = [abs(t-timestamps[0]-i*FRAME_PERIOD) for i, t in enumerate(timestamps)]
+    gaps = [{"after_frame": i, "from_pts": float(timestamps[i]), "to_pts": float(timestamps[i+1]), "interval_ms": float(dt*1000)}
+            for i, dt in enumerate(intervals) if dt > FRAME_PERIOD+TIMESTAMP_TOLERANCE]
+    step_bad = sum(error > TIMESTAMP_TOLERANCE for error in step_errors)
+    span = timestamps[-1]-timestamps[0]
+    observed_rate = Fraction(len(timestamps)-1) / span if span > 0 else None
+    report["timing"] = {
+        "first_pts": float(timestamps[0]), "last_pts": float(timestamps[-1]),
+        "first_pts_offset_normalized": True,
+        "observed_fps": float(observed_rate) if observed_rate is not None else None,
+        "interval_min_ms": float(min(intervals)*1000), "interval_max_ms": float(max(intervals)*1000),
+        "maximum_step_error_ms": float(max(step_errors)*1000),
+        "maximum_grid_error_ms": float(max(grid_errors)*1000),
+        "interval_violations": step_bad, "gap_count": len(gaps), "gap_examples": gaps[:20],
+    }
+    if step_bad:
+        _fail(report, "irregular_frame_intervals", "Интервалы кадров не образуют равномерные 60 Гц", count=step_bad)
+    if max(grid_errors) > TIMESTAMP_TOLERANCE:
+        _fail(report, "off_60hz_grid", "Накопленное отклонение PTS от сетки 60 Гц превышает допуск")
+    if observed_rate is None or abs(observed_rate-TARGET_FPS) > RATE_TOLERANCE:
+        _fail(report, "observed_rate_not_60", "Частота по декодированным PTS не соответствует 60 fps")
+    if stream_duration is not None:
+        expected_duration = len(frames)*FRAME_PERIOD
+        if abs(stream_duration-expected_duration) > TIMESTAMP_TOLERANCE:
+            _fail(report, "stream_duration_mismatch", "Длительность потока не соответствует числу кадров при 60 fps",
+                  actual_seconds=float(stream_duration), expected_seconds=float(expected_duration))
+        if not bad_durations and abs(stream_duration-(span+durations[-1])) > TIMESTAMP_TOLERANCE:
+            _fail(report, "timeline_tail_mismatch", "Длительность потока не совпадает с концом последнего кадра")
+
+
+def audit_render(path):
+    """Measure the cadence of the supplied file without converting it."""
+    path = Path(path).resolve()
+    report = _new_report(path)
+    try:
+        before = path.stat()
+        report["output_sha256"] = _file_sha256(path)
+        report["output_bytes"] = before.st_size
+        completed = subprocess.run([
+            "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_streams", "-show_frames",
+            "-show_entries", "stream=codec_name,width,height,r_frame_rate,avg_frame_rate,time_base,duration,duration_ts,nb_frames:frame=best_effort_timestamp,best_effort_timestamp_time,duration,duration_time,pkt_duration,pkt_duration_time",
+            "-of", "json", str(path),
+        ], check=True, capture_output=True, text=True, timeout=180)
+        if completed.stderr.strip():
+            _fail(report, "decode_errors", "Декодер сообщил об ошибках", details=completed.stderr.strip()[:1500])
+        _audit_timing(json.loads(completed.stdout), report)
+        after = path.stat()
+        if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns) or _file_sha256(path) != report["output_sha256"]:
+            _fail(report, "output_changed_during_audit", "Итоговый ролик изменился во время проверки")
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        _fail(report, "render_audit_error", "Не удалось проверить итоговый ролик", details=str(error)[:1500])
+    report["passed"] = not report["failures"]
+    report["render_cadence_60fps"] = "passed" if report["passed"] else "failed"
+    return report
+
+
+def require_render_60fps(path):
+    """Require final output at 60 Hz."""
+    report = audit_render(path)
+    if not report["passed"]:
+        raise RenderQualityError(report)
+    return report
+
+
+def delivery_frame_count(duration):
+    """Quantize requested seconds to 60 fps, then enforce 600–1200 frames.
+
+    No clamping or stretching occurs. The caller must render exactly the returned
+    count at 60 fps; source-video frame rate is irrelevant to this calculation.
+    """
+    if type(duration) not in (int, float):
+        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд")
+    try:
+        seconds = _fraction(duration)
+    except (ValueError, ZeroDivisionError):
+        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд") from None
+    if seconds <= 0:
+        raise ValueError("Длительность ролика должна быть конечным положительным числом секунд")
+    frames = round(seconds * TARGET_FPS)
+    if not DELIVERY_MIN_FRAMES <= frames <= DELIVERY_MAX_FRAMES:
+        raise ValueError("Готовый продуктовый ролик должен длиться 10–20 секунд "
+                         "(600–1200 кадров при 60 fps); автоматического сокращения или растяжения нет")
+    return frames
+
+
+def audit_delivery(path):
+    """Audit product duration plus cadence, keeping their results distinct."""
+    report = audit_render(path)
+    report["scope"] = "product_delivery"
+    report["delivery_policy"] = {
+        "minimum_seconds": DELIVERY_MIN_FRAMES // 60, "maximum_seconds": DELIVERY_MAX_FRAMES // 60,
+        "minimum_decoded_frames": DELIVERY_MIN_FRAMES,
+        "maximum_decoded_frames": DELIVERY_MAX_FRAMES,
+        "target_fps": "60/1", "boundaries_inclusive": True,
+        "automatic_clamp_or_stretch": False,
+    }
+    frames = report.get("decoded_frame_count")
+    frame_count_valid = type(frames) is int and DELIVERY_MIN_FRAMES <= frames <= DELIVERY_MAX_FRAMES
+    cadence_passed = report["render_cadence_60fps"] == "passed"
+    # A 600-frame 30 fps file lasts 20 seconds, not 10. Do not derive its actual
+    # duration from the target 60 fps when the cadence audit has failed.
+    report["delivery_duration"] = {
+        "status": "passed" if frame_count_valid and cadence_passed else "unverified" if frame_count_valid else "failed",
+        "decoded_frame_count": frames,
+        "frame_count_in_range": frame_count_valid,
+        "seconds_at_verified_60fps": frames / 60 if type(frames) is int and cadence_passed else None,
+        "requires_verified_60fps": True,
+    }
+    if not frame_count_valid:
+        _fail(report, "delivery_frame_count_out_of_range",
+              "Готовый продуктовый ролик должен содержать 600–1200 кадров при 60 fps (10–20 секунд)",
+              actual_decoded_frames=frames, minimum=DELIVERY_MIN_FRAMES, maximum=DELIVERY_MAX_FRAMES)
+    stream = report.get("stream", {})
+    if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
+        _fail(report, "delivery_dimensions", "Размер продуктового ролика должен быть 1920 × 1920")
+    report["passed"] = not report["failures"]
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("render", type=Path)
+    parser.add_argument("--report", type=Path)
+    parser.add_argument("--cadence-only", action="store_true",
+                        help="Только диагностический аудит fps для SBS и технических видео; не проверяет готовность продуктового ролика")
+    args = parser.parse_args()
+    if args.report and (args.render.resolve() == args.report.resolve() or
+                        (args.report.exists() and args.render.exists() and args.report.samefile(args.render))):
+        parser.error("Путь отчёта совпадает с видео. Укажите отдельный JSON.")
+    report = (audit_render if args.cadence_only else audit_delivery)(args.render)
+    text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        save_json(args.report, report)
+    print(text, end="")
+    return 0 if report["passed"] else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

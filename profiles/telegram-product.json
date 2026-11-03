@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "name": "Showtime Telegram product - portable",
+  "canvas": {
+    "width": 1920,
+    "height": 1920,
+    "fps": 60
+  },
+  "device": {
+    "id": "iphone-17-pro-silver",
+    "source": "../assets/showtime/phones/iphone-17-pro-silver.png",
+    "manifest": "../assets/showtime/phones.json",
+    "source_size": [
+      1350,
+      2760
+    ],
+    "screen_insets": [
+      70,
+      73,
+      70,
+      73
+    ],
+    "screen_radius_fraction": [
+      0.09,
+      0.042
+    ],
+    "left": 310,
+    "top": 90,
+    "width": 1300,
+    "shadow_blur": 18,
+    "shadow_opacity": 0,
+    "shadow_offset": [
+      0,
+      12
+    ],
+    "model": "iPhone 17 Pro",
+    "color": "Silver"
+  },
+  "layout": "crop-top",
+  "layouts": {
+    "full-device": {
+      "left": 530,
+      "top": 80,
+      "width": 860
+    },
+    "reference-crop": {
+      "left": 310,
+      "top": 90,
+      "width": 1300
+    }
+  },
+  "background": {
+    "source": "../assets/showtime/provenance.json",
+    "palette": [
+      "#b4cede",
+      "#dfcee5",
+      "#bfd6d8",
+      "#e3d8e7"
+    ],
+    "palette_note": "Showtime pastel",
+    "pattern": "../assets/showtime/pattern.png",
+    "pattern_name": "Dot grid",
+    "pattern_opacity": 0.06,
+    "pattern_blend": "soft-light",
+    "id": "pastel"
+  },
+  "tap": {
+    "fps": 60,
+    "start_number": 0,
+    "frames": 41,
+    "anchor_frame": 25,
+    "width": 420,
+    "blur": 0,
+    "overlay_space": "stage",
+    "maximum_diameter_fraction": 0.485,
+    "backdrop_sigma": 42,
+    "monochrome_rgb": [
+      49,
+      123,
+      255
+    ],
+    "native_opacity_peak": 0.5019607843137255,
+    "tint_rgb": [
+      167,
+      195,
+      238
+    ],
+    "tint_note": "Tint for the bundled procedural contact ring.",
+    "sequence": "../assets/tap/native/tap_%05d.png"
+  },
+  "comparison": {
+    "label_height": 120,
+    "labels": [
+      "Telegram original",
+      "Showtime app recording"
+    ]
+  },
+  "notes": [
+    "Schematic frame sizes follow the configured device geometry.",
+    "Only application text is visible in product videos."
+  ],
+  "path_base": "config",
+  "policy": {
+    "editorial_text": false
+  }
+}
