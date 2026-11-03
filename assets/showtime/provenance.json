@@ -3,10 +3,6 @@
   "source": "Drawn by scripts/package_public.py",
   "assets": [
     {
-      "file": "pattern.png",
-      "sha256": "12fd5dd809c9e020d849a9541aff9e6e849c0890fb2408882c4a9d98b5167a56"
-    },
-    {
       "file": "phones/iphone-17-black.png",
       "sha256": "08dc3577649c4523801ab72b05e1aeee1539bb25b42821ec0572800bd693e5f5"
     },

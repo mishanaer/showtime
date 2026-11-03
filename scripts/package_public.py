@@ -51,12 +51,6 @@ def build(destination):
         phone["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
     write_json(art / "phones.json", {"schema_version": 1, "source": "showtime schematic frames",
                                      "phones": catalog["phones"]})
-    pattern = Image.new("RGBA", (512, 512))
-    draw = ImageDraw.Draw(pattern)
-    for y in range(16, 512, 48):
-        for x in range(16, 512, 48):
-            draw.ellipse((x, y, x+5, y+5), fill="#212733")
-    pattern.save(art / "pattern.png")
     palettes = {"sage":["#c8dacd","#aec5b1","#e1e4cb","#b2c8bd"],
                 "vivid":["#89b4ee","#c3a5f2","#cebfee","#99cfde"],
                 "graphite":["#252a33","#31394b","#202633","#414654"],
@@ -81,7 +75,9 @@ def build(destination):
     write_json(art / "provenance.json", {"schema_version":1, "source":"Drawn by scripts/package_public.py", "assets":assets})
     profile_path = destination / "profiles/telegram-product.json"
     profile = json.loads(profile_path.read_text())
-    profile["background"].update(palette=palettes["pastel"], pattern_name="Dot grid", palette_note="showtime pastel")
+    for key in ("pattern", "pattern_name", "pattern_blend", "pattern_opacity"):
+        profile["background"].pop(key, None)
+    profile["background"].update(palette=palettes["pastel"], palette_note="showtime pastel")
     profile["comparison"]["labels"] = ["Telegram original", "showtime app recording"]
     profile["tap"]["tint_note"] = "Tint for the bundled procedural contact ring."
     profile["notes"] = ["Schematic frame sizes follow the configured device geometry.",

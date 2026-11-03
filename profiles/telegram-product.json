@@ -58,10 +58,6 @@
       "#e3d8e7"
     ],
     "palette_note": "showtime pastel",
-    "pattern": "../assets/showtime/pattern.png",
-    "pattern_name": "Dot grid",
-    "pattern_opacity": 0.06,
-    "pattern_blend": "soft-light",
     "id": "pastel"
   },
   "tap": {

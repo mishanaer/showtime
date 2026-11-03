@@ -496,7 +496,10 @@ def render(args, config, directory):
             report["events_source"] = {"path":str(Path(args.events).resolve()),"sha256":sha256(args.events)}
         if taps:
             report["tap"]["frame_sha256"] = {str(index):sha256(tap_sequence % index) for index in range(tap["start_number"], tap["start_number"]+tap["frames"])}
-        report["provenance"] = {str(path):sha256(path) for path in (Path(__file__), args.config, Path(config["device"]["source"]), Path(config["background"]["source"]), Path(config["background"]["pattern"]))}
+        report["provenance"] = {str(path):sha256(path) for path in (Path(__file__), args.config, Path(config["device"]["source"]), Path(config["background"]["source"]))}
+        if config["background"].get("pattern"):
+            pattern = Path(config["background"]["pattern"])
+            report["provenance"][str(pattern)] = sha256(pattern)
         if config.get("layout") in config.get("caption", {}).get("layouts", []):
             caption = config["caption"]
             caption_font = Path(caption.get("font") or config.get("font"))

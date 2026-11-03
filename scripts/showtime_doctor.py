@@ -55,8 +55,10 @@ def diagnose(config_path, record=False, axe=None, tap_sequence=None):
             return ((config_path.parent / path) if config.get("path_base") == "config" else path).resolve()
 
         assets = {"device": config["device"]["source"],
-                  "provenance": config["background"]["source"],
-                  "pattern": config["background"]["pattern"]}
+                  "provenance": config["background"]["source"]}
+        pattern = config["background"].get("pattern")
+        if pattern:
+            assets["pattern"] = pattern
         for name, value in assets.items():
             path = resolve(value)
             passed = path.is_file()
@@ -82,7 +84,7 @@ def diagnose(config_path, record=False, axe=None, tap_sequence=None):
             check("asset_hashes", not mismatches, mismatches or "bundled checksums match",
                   "Restore the bundled assets from the same showtime version.")
 
-        if Path(config["background"]["pattern"]).suffix.lower() == ".svg" and config["background"].get("pattern_opacity", 0) > 0:
+        if pattern and Path(pattern).suffix.lower() == ".svg" and config["background"].get("pattern_opacity", 0) > 0:
             check("node", shutil.which("node"), shutil.which("node") or "SVG pattern needs Node",
                   "Provide Node and sharp for this legacy SVG profile, or use the portable PNG profile.")
             sharp = config["background"].get("sharp_module")
