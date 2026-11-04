@@ -1,16 +1,16 @@
 # showtime
 
-Create app demo videos with your AI agent.
+Create app demo videos with your AI agent
 
 [![Example: Telegram attachment menu](assets/examples/attach-menu-duck.gif)](assets/examples/attach-menu-duck.mp4)
 
-[Full-quality video](assets/examples/attach-menu-duck.mp4).
+[Full-quality video](assets/examples/attach-menu-duck.mp4)
 
 ## How it works
 
 Showtime is a local toolkit that turns a scenario into a recorded app demo. 
 
-AI agent prepares the scene, operates the app in iOS Simulator, and reviews the result. Python scripts record the screen, keep actions aligned with the footage, edit the take, and compose the finished video.
+Agent prepares the scene, operates the app in iOS Simulator, and reviews the result. Python scripts record the screen, keep actions aligned with the footage, edit the take, and compose the finished video.
 
 After you approve the scenario, preparation and quality checks happen inside the workflow. The video you receive is the finished MP4, with the phone frame, background, and tap indicators already included.
 
