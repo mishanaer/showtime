@@ -39,7 +39,7 @@ def review_for_clock(clock):
         return {}  # Imported captures and older recording clocks
     review = clock.get("human_review", {})
     if purpose != "final" or review.get("story_materials_checked") is not True or clock.get("exit_code") != 0:
-        raise ValueError("A final video needs a completed take with approved materials")
+        raise ValueError("A final video needs a completed take with internally checked materials")
     return review
 
 

@@ -3,7 +3,8 @@
 
 This checks declarations, media extensions and file hashes. It does not inspect
 the depicted UI or prove visual quality. A partial prepared-content v2 manifest
-without story_review is accepted; review_gate.py still checks later approvals.
+without story_review is accepted; review_gate.py checks the internal frame review
+and scenario approval before recording.
 """
 
 import argparse

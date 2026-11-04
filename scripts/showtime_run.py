@@ -3,7 +3,7 @@
 
 Artifact paths are relative to --run-dir, including relative CLI inputs.
 Statuses are agent notes, not verified milestones. review_gate.py remains
-responsible for checking scenario and prepared-content approvals.
+responsible for checking scenario approval and internal preparation evidence.
 """
 
 import argparse
