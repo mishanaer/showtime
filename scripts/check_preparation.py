@@ -121,6 +121,9 @@ def check_preparation(manifest_path):
             if check.get("visible_keypresses") is not False:
                 raise ValueError("For character_typing, watch the entire typing sequence. "
                                  "Set visible_keypresses to false only if the keys show no highlights, popups, or touch rings.")
+            if check.get("visible_caret_during_typing") is not False:
+                raise ValueError("For character_typing, verify that the insertion caret stays hidden "
+                                 "from the first through the last character, then set visible_caret_during_typing to false.")
         evidence = check.get("evidence")
         if not isinstance(evidence, list) or (status == "ready" and not evidence):
             raise ValueError(f"{name} needs an evidence list. A ready check needs at least one file.")

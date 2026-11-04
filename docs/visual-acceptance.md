@@ -15,6 +15,7 @@ Watch the export and several uninterrupted loops. Check:
 - The action visibly causes the promised benefit; context and entry are understandable without commentary.
 - Names, avatars, dates, roles and scene state remain consistent. Text matches the manifest language and has sufficient unobstructed reading time.
 - Reject any visible keypress highlight, popup letter or touch ring on keyboard keys while typing. Review the complete input interval in the exported video.
+- The insertion caret stays hidden while characters appear and regains its original appearance immediately after the final character. Check the first character, the whole typing interval and the return; reject a flashing or lagging caret or an added pause for its restoration. A caret already hidden by the app may remain hidden. During rehearsal, also confirm restoration after interrupted input or focus loss.
 - Full-viewport geometry, corners, visible controls, keyboard predictions, character typing and absence of editorial text still meet the preparation rules; unrelated tooltips and hints remain hidden throughout the flow.
 - Scrolls and native navigation remain continuous across cuts. Inspect neighboring frames at suspicious jumps; 60-fps encoding alone proves nothing about source motion.
 - Taps hit their targets with complete entry/release phases. Holds use contact timing, not command duration.

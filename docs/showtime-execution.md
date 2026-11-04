@@ -30,6 +30,8 @@ Set the product profile layout to `crop-top`, `crop-bottom` or `full` before pre
 
 For character typing, use `--type type_text --text-file <file>`, omitting `--point` and `--step`. The default rate is 30 characters per second (1/30-second inter-character delay, plus driver overhead). This AXe route accepts printable US ASCII without a trailing newline. Use a verified app-side or other driver for unsupported characters. If hardware input changes the layout, hides a required keyboard or animates keys, use a demo driver to insert one character at a time into the focused native field. Verify the resulting text and check consecutive frames across the entire input for key highlights, popups and rings.
 
+Hide the insertion caret before the first character and keep it hidden while characters appear, regardless of the input route. Restore the field's original appearance immediately after the final character, or on cancellation, error or focus loss. Scope this change to the focused field; preserve its text, selection, geometry and typing pace. Restoration must not add an idle pause before the next action. The AXe/HID route does not hide the caret itself: pair it with an app-side appearance hook, or use the bundled native driver. Verify the first character, the full typing interval and restoration in the recording; a successful input command is not visual evidence.
+
 For a local simulator build, showtime includes [the native typing driver](../scripts/simulator/typing-driver.m). Compile it once in the run directory on the Mac hosting the simulator (bash):
 
 ```bash
@@ -46,7 +48,7 @@ rm -f "$APP_TMP/showtime-caption-result.json"
 cp "$RUN_DIR/caption.txt" "$APP_TMP/showtime-caption.pending" && mv "$APP_TMP/showtime-caption.pending" "$APP_TMP/showtime-caption-command.txt"
 ```
 
-Wait for `showtime-caption-result.json` in the same directory. Require its `value` to equal the input exactly. Save the result with the take: `characters` logs visible prefixes and Unix timestamps for journal alignment. The driver calls native `insertText:` once per composed character at approximately 30 per second. Treat the interval as typing with no tap coordinates. Verify keyboard appearance in the encoded preview. Relaunch the app normally to end the driver session.
+Wait for `showtime-caption-result.json` in the same directory. Require its `value` to equal the input exactly. Save the result with the take: `characters` logs visible prefixes and Unix timestamps for journal alignment. The driver calls native `insertText:` once per composed character at approximately 30 per second. It saves the focused field's tint, makes it transparent during typing and restores it before reporting completion or an input error. Custom fields that draw their own caret need an app-specific hook if tint does not hide it. Treat the interval as typing with no tap coordinates. Verify caret and keyboard appearance in the encoded preview. Relaunch the app normally to end the driver session.
 
 Capture complete transitions, the result's reading interval and the loop return. Stop only this recorder with SIGINT using its clock's `recorder_pid`, and wait for completion. Exclude the late `--tail-sentinel` marker from the edit. Preparation-only captures are described in [Preparation](preparation.md#motion-preview).
 
