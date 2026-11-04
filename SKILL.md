@@ -24,7 +24,7 @@ Ask one question at a time, in the conversation language. Treat information alre
 - New videos use approved iPhone 17 or 18 family mockups and the bundled background palettes. Choose an available matching simulator model, phone color and background automatically; user preferences override these choices. Show the combination in the storyboard. See [Preparation](docs/preparation.md) for assets and capture matching.
 
 - Apply the layout chosen by the user. Use `crop-top` for action near the top, `crop-bottom` for action near the composer, attachments or keyboard, and `full` to show the whole phone centered with 90 px above and below on a 1920 square. Use the selected framing in preparation, review and export.
-- Text appears character by character. Keyboard keys must show no highlights, popup characters or tap indicators. [Standard typing driver](scripts/simulator/typing-driver.m) · [Usage](docs/showtime-execution.md#capture) · [Visual acceptance](docs/visual-acceptance.md)
+- Text appears character by character with the insertion caret hidden throughout typing. Restore the field's original caret appearance immediately after the final character or an interrupted input; do not add a pause for restoration. Keyboard keys must show no highlights, popup characters or tap indicators. [Standard typing driver](scripts/simulator/typing-driver.m) · [Usage](docs/showtime-execution.md#capture) · [Visual acceptance](docs/visual-acceptance.md)
 
 ## Workspace
 

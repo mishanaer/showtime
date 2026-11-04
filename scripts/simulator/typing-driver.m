@@ -30,16 +30,29 @@ static void typeCaption(NSString *caption) {
     }
     typing = YES;
     configure(view);
+    // Scope appearance to this field and this input session, including aborts.
+    UIColor *originalTint = [view tintColor];
+    [view setTintColor:UIColor.clearColor];
+    void (^finish)(NSTimer *, NSDictionary *) = ^(NSTimer *timer, NSDictionary *result) {
+        [timer invalidate];
+        [view setTintColor:originalTint];
+        typing = NO;
+        writeJSON(result, @"showtime-caption-result.json");
+    };
     NSMutableArray *log=[NSMutableArray new];
     __block NSUInteger index=0;
     [NSTimer scheduledTimerWithTimeInterval:1.0/30 repeats:YES block:^(NSTimer *timer){
-        if (![view isFirstResponder]) { typing = NO; [timer invalidate]; writeJSON(@{@"error":@"Caption field lost focus"},@"showtime-caption-result.json"); return; }
-        NSRange next = [caption rangeOfComposedCharacterSequenceAtIndex:index];
-        [view insertText:[caption substringWithRange:next]];
-        index = NSMaxRange(next);
-        [log addObject:@{@"time":@([[NSDate date] timeIntervalSince1970]),@"visible_text":[view text]}];
-        if (index == caption.length) {
-            typing = NO; [timer invalidate];writeJSON(@{@"characters":log,@"value":[view text]},@"showtime-caption-result.json");
+        @try {
+            if (![view isFirstResponder]) { finish(timer, @{@"error":@"Caption field lost focus"}); return; }
+            NSRange next = [caption rangeOfComposedCharacterSequenceAtIndex:index];
+            [view insertText:[caption substringWithRange:next]];
+            index = NSMaxRange(next);
+            [log addObject:@{@"time":@([[NSDate date] timeIntervalSince1970]),@"visible_text":[view text]}];
+            if (index == caption.length) {
+                finish(timer, @{@"characters":log,@"value":[view text]});
+            }
+        } @catch (NSException *exception) {
+            finish(timer, @{@"error":exception.reason ?: @"Caption input failed"});
         }
     }];
 }

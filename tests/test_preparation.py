@@ -30,6 +30,7 @@ class PreparationTests(unittest.TestCase):
         for name in ("full_height", "character_typing"):
             checks[name]["evidence"] = [deepcopy(self.video)]
         checks["character_typing"]["visible_keypresses"] = False
+        checks["character_typing"]["visible_caret_during_typing"] = False
         self.manifest = {
             "schema_version": 2, "kind": "prepared-content",
             "content": {"preparation": {
@@ -92,6 +93,18 @@ class PreparationTests(unittest.TestCase):
         del check["visible_keypresses"]
         with self.assertRaisesRegex(ValueError, "visible_keypresses"):
             self.check()
+
+    def test_typing_requires_verified_hidden_caret(self):
+        check = self.preparation["checks"]["character_typing"]
+        for value in (True, 0, "false", None):
+            check["visible_caret_during_typing"] = value
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "visible_caret_during_typing"):
+                self.check()
+        del check["visible_caret_during_typing"]
+        with self.assertRaisesRegex(ValueError, "visible_caret_during_typing"):
+            self.check()
+        check["visible_caret_during_typing"] = False
+        self.assertTrue(self.check()["preparation_complete"])
 
     def test_small_phone_with_canonical_layout_label_is_rejected(self):
         wrong = self.file("small.json", b'{"device":[488,18,944,1930],"screen":[539,67,842,1832]}')

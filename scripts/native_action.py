@@ -5,7 +5,8 @@ Dispatch log timestamps approximate touch timing; they do not measure device
 touch-down. Coordinates must come from a current native UI observation.
 type_text sends printable US ASCII characters in one batch with inter-character
 pauses; actual duration also includes HID dispatch overhead. Keyboard suggestion
-settings must be prepared separately in the app or Simulator.
+settings and caret hiding must be prepared separately in the app or Simulator;
+this HID route does not control the field's caret appearance.
 """
 import argparse
 import json
