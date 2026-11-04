@@ -2,6 +2,10 @@
 
 Record a 10–20 second demo of your app in iOS Simulator. showtime adds a phone frame and tap indicators and exports a 1920 × 1920 MP4 at 60 fps.
 
+[![Example: Telegram attachment menu](assets/examples/attach-menu-duck.gif)](assets/examples/attach-menu-duck.mp4)
+
+[Watch the full-quality video](assets/examples/attach-menu-duck.mp4).
+
 ## How to use
 
 1. [Install showtime](docs/install.md).
