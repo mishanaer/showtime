@@ -4,7 +4,7 @@ Use this reference when saving a decision or preparing a new capture. User decis
 
 ## Decisions
 
-A new video needs approval of (1) its story before scene preparation and (2) the actual prepared materials after independent frame review, before the final take. A changed story requires both decisions again. Independently changed prepared content requires the second decision again. Direct user corrections use [requested corrections](#requested-corrections); editing reusable footage needs no new capture approval.
+A new video needs one user approval: the scenario, composition and timing before production. After that, prepare and internally review the actual materials, record, export and complete all [delivery checks](visual-acceptance.md#every-delivered-video). Send the finished video without requesting approval of a preview or storyboard. An independently changed scenario needs a new scenario decision. Changes to prepared materials within the approved story require updated evidence and internal review, not another user approval.
 
 Approval refers to the shown version, not the general process. Record real `source`, `reference`, exact `quote`, `decision: "approved"` and `manifest_sha256` in the decision JSON. Preserve exact quotes in their original language.
 
@@ -14,7 +14,13 @@ python3 "$SHOWTIME/scripts/review_gate.py" approve --scenario "$RUN_DIR/scenario
 python3 "$SHOWTIME/scripts/review_gate.py" check --scenario "$RUN_DIR/scenario.json" --approval-dir "$RUN_DIR/approvals"
 ```
 
-For the second decision, fingerprint `prepared-content.json` and add `--prepared-content "$RUN_DIR/prepared-content.json"` to `approve` and `check`, using its own decision file. Re-saving an identical decision is idempotent; replaced receipts remain in `approvals/history/`.
+After internal preparation, validate the materials before recording:
+
+```bash
+python3 "$SHOWTIME/scripts/review_gate.py" check --scenario "$RUN_DIR/scenario.json" --prepared-content "$RUN_DIR/prepared-content.json" --approval-dir "$RUN_DIR/approvals"
+```
+
+This requires the scenario decision and current preparation/frame-review evidence. It does not require or create `prepared-content.approval.json`. The result reports `target_user_reviewed: false`; internal checks do not imply user approval. Re-saving an identical scenario decision is idempotent; replaced receipts remain in `approvals/history/`.
 
 ## Manifests
 
@@ -24,7 +30,7 @@ One pair per video: `scenario.json`, `prepared-content.json`, plus `approvals/`.
 | --- | --- |
 | Both | `content.language`: nonempty language code; `en` unless explicitly overridden |
 | Scenario (`kind: "scenario"`) | `content.story`: nonempty `context`, `entry_point`, `action`, `payoff`, `loop`; `content.scene_plan` as below |
-| Prepared (`kind: "prepared-content"`) | `content.scene_content`, `content.storyboard`, `content.story_review`; all new recording approvals require [preparation evidence](preparation.md#evidence) |
+| Prepared (`kind: "prepared-content"`) | `content.scene_content`, `content.storyboard`, `content.story_review`; all new recordings require [preparation evidence](preparation.md#evidence) |
 
 `scene_plan` and `scene_content`: nonempty `setting` and `continuity`; `actors` and `supporting_content` are lists of nonempty strings. Actors may be empty. Empty supporting content requires `intentional_empty_reason`. The plan describes intended surroundings; prepared content records exact texts and actual assets.
 
@@ -38,26 +44,12 @@ Compute the review digest over the prepared manifest except `content.story_revie
 PYTHONPATH="$SHOWTIME/scripts" python3 -c 'import json, sys; from review_gate import story_materials_sha256; print(story_materials_sha256(json.load(open(sys.argv[1]))))' "$RUN_DIR/prepared-content.json"
 ```
 
-Changes to other fields or referenced files require updated hashes and another internal review. Keep approved inputs unchanged during capture; tools do not lock them. V1 remains readable/fingerprintable, but does not authorize new captures; existing videos remain usable without migration.
+Changes to other fields or referenced files require updated hashes and another internal review. Keep checked inputs unchanged during capture; tools do not lock them. V1 remains readable/fingerprintable, but does not authorize new captures; existing videos remain usable without migration.
 
 ## Requested corrections
 
-For a user-requested correction to an approved video, retain the baseline decisions and scenario. Prepare revised materials and update their internal review. Save a correction request with:
+An explicit correction request authorizes that scope without another confirmation. Keep the actual user request in the run's records. For scene corrections, retain the approved scenario, update the prepared materials and repeat internal checks. For a directly requested story change, record that instruction as the decision for the revised scenario. Export-only fixes may reuse existing footage. Apply the full delivery checklist to the revised MP4 before sending it.
 
-```text
-decision: correction_requested
-scenario_approval_sha256: canonical hash of scenario.approval.json
-base_prepared_approval_sha256: canonical hash of the original prepared-content.approval.json
-target_prepared_sha256: fingerprint of the revised prepared-content manifest
-instructions: [{source, reference, quote, scope}]
-```
-
-Use `review_gate.canonical_sha256` for receipt hashes, `fingerprint` for manifests. Include all applicable user instructions with exact quotes and scope.
-
-```bash
-python3 "$SHOWTIME/scripts/review_gate.py" authorize-correction --scenario "$RUN_DIR/scenario.json" --prepared-content "$RUN_DIR/prepared-content.json" --approval-dir "$RUN_DIR/approvals" --decision-file "$RUN_DIR/correction-request.json" --output "$RUN_DIR/correction-authorization.json"
-```
-
-Pass that file as `--revision-file` to `review_gate.py check` and `record_simulator.py`, alongside scenario, prepared content and approvals. It authorizes the specified revision without overwriting baseline approvals or claiming the user viewed it (`target_user_reviewed: false`).
+Historical runs may still contain prepared-content approvals and `--revision-file` correction receipts. The legacy `approve --prepared-content` and `authorize-correction` commands remain supported for those records; do not generate them for new runs. Existing receipts are preserved, but the normal recording path no longer depends on a second user decision.
 
 The gate validates structure, file hashes and decision/review bindings. The agent verifies visual meaning, language and correction scope; the gate cannot authenticate reviewer identity or prove visual quality.

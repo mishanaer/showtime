@@ -14,6 +14,30 @@ import record_simulator
 
 
 class CompositionPolicyTests(unittest.TestCase):
+    def test_export_requires_explicit_events_even_for_a_scene_without_taps(self):
+        with self.assertRaisesRegex(ValueError, "events"):
+            compositor.load_events(None, (402, 874))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.json"
+            path.write_text('{"events": []}')
+            self.assertEqual(compositor.load_events(path, (402, 874)), ([], (402, 874)))
+            tap = {"id": "open", "type": "tap", "time": 1, "x": 200, "y": 250}
+            path.write_text(json.dumps({"events": [tap]}))
+            self.assertEqual(compositor.load_events(path, (402, 874)), ([tap], (402, 874)))
+            for invalid in ({"coordinate_space": {"width": 402, "height": 874}},
+                            {"events": None}, {"events": ""}, None):
+                path.write_text(json.dumps(invalid))
+                with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "events"):
+                    compositor.load_events(path, (402, 874))
+
+    def test_render_cli_without_events_stops_before_loading_assets(self):
+        argv = ["compose_pilot.py", "render", "--capture", "take.mp4", "--output", "showtime.mp4"]
+        with patch.object(sys, "argv", argv), patch.object(compositor, "load_config") as load, \
+                contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            compositor.main()
+        self.assertEqual(error.exception.code, 2)
+        load.assert_not_called()
+
     def test_failed_report_preserves_old_video_and_reports(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

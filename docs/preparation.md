@@ -1,6 +1,6 @@
 # Scene preparation
 
-Apply these rules while creating the storyboard, before review. Use actual app frames in the final composition.
+Apply these rules while preparing the scene for internal review. Use actual app frames in the final composition. Preparation is internal work after scenario approval, not a second user-facing approval stage.
 
 ## Phone and background
 
@@ -23,7 +23,7 @@ Choose a model with an available matching simulator; either the approved iPhone 
 | Character typing | Hide the insertion caret while characters appear; restore its original appearance on completion or interruption without adding a pause. Keep visible keys visually still: no pressed states, popup letters or touch indicators on keys. Review the entire typing interval and record both `visible_keypresses: false` and `visible_caret_during_typing: false` inside `checks.character_typing` only after verification. Type one character at a time into the real field at 30 characters per second by default; preview the pace and allow time to read. Do not paste the whole string or overlay simulated text. |
 | No editorial text | Keep app text only. No titles, labels or explanations such as “Later” beside or over the phone. Labels on separate technical comparisons are allowed. |
 
-Prepare storyboard roles `context`, `entry`, `action`, `result`; one image may cover multiple roles. Preview typing and transitions in motion, including intermediate bottom-edge geometry. Fix defects before handing over the package.
+Prepare storyboard roles `context`, `entry`, `action`, `result`; one image may cover multiple roles. Inspect typing and transitions in motion, including intermediate bottom-edge geometry. Fix defects before recording the finished video.
 
 ## Evidence
 
@@ -49,20 +49,20 @@ Each check has `status: "ready"`, a factual nonempty `note`, and `evidence: [{pa
 
 `not_applicable` requires a reason in `note` and may have empty evidence.
 
-## Motion preview
+## Internal motion checks
 
-After story approval, record a technical rehearsal without requiring the second approval:
+After scenario approval, use short technical rehearsals where needed to verify transitions or typing. These are internal checks, not a full draft to send for user approval:
 
 ```bash
 python3 "$SHOWTIME/scripts/record_simulator.py" --preparation-preview --simulator "$SIMULATOR_ID" --output "$RUN_DIR/previews/transition.mp4" --scenario "$RUN_DIR/scenario.json" --approval-dir "$RUN_DIR/approvals" --tail-sentinel
 ```
 
-Use the [capture lifecycle](showtime-execution.md#capture); remove the sentinel from the shown preview. This capture has `purpose: preparation-preview`, not approval for a final take.
+Use the [capture lifecycle](showtime-execution.md#capture); exclude the sentinel from the inspected motion. This legacy-named flag marks an internal preparation capture. It cannot replace the checked production take. Do not record and compose a complete draft merely to ask permission for a clean take.
 
-Before internal review and user presentation:
+Before internal frame review:
 
 ```bash
 python3 "$SHOWTIME/scripts/check_preparation.py" --manifest "$RUN_DIR/prepared-content.json"
 ```
 
-`story_review` may still be absent. The checker validates evidence completeness and hashes, not image contents. Next obtain the [independent frame review](visual-acceptance.md#storyboard-review) and the second user decision under [the approval contracts](review-workflow.md).
+`story_review` may still be absent. The checker validates evidence completeness and hashes, not image contents or tap indicators. Complete the [independent frame review](visual-acceptance.md#storyboard-review), then run `review_gate.py check` with the scenario, prepared content and approval directory. This validates internal preparation against the approved scenario without a prepared-content approval receipt. Proceed to recording and export; complete the full delivery checks before sending the finished video.

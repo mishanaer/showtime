@@ -24,7 +24,7 @@ Open the iOS app project in your agent and give it a prompt like this:
 
 > Follow `~/showtime/SKILL.md` to record a demo. Use `~/showtime/.venv/bin/python` for the scripts. Show me opening a saved note, changing its title, and finding it in the list under the new title.
 
-Choose the full phone, top crop, or bottom crop when asked. Approve the scenario, then the storyboard. After recording, the agent gives you the path to the finished MP4.
+Choose the full phone, top crop, or bottom crop when asked. Approve the scenario. The agent prepares, records, and checks the video, then sends the finished MP4. You can request corrections to that version without a separate preview approval.
 
 ### Optional shortcut for Claude Code
 

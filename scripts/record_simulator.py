@@ -22,13 +22,13 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True,
                         help="Approved scenario")
     parser.add_argument("--prepared-content", type=Path,
-                        help="Approved content and preview, required for a final recording")
+                        help="Internally checked materials, required for a final recording; no second user approval")
     parser.add_argument("--approval-dir", type=Path, required=True,
                         help="Directory containing the recorded approval decisions")
     parser.add_argument("--preparation-preview", action="store_true",
-                        help="Record a technical preview after scenario approval and before materials review")
+                        help="Internal technical rehearsal only, after scenario approval; not a user review stage")
     parser.add_argument("--revision-file", type=Path,
-                        help="Recorded request to revise an approved video")
+                        help="Optional legacy correction receipt from a two-approval run")
     parser.add_argument("--tail-sentinel", action="store_true", help="On stop, preserve idle video tail with a late 9:42 status marker; restore 9:41 after finalizing")
     args = parser.parse_args()
     if args.preparation_preview and args.revision_file is not None:

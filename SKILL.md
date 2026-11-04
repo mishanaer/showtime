@@ -11,6 +11,7 @@ Demonstrate one product benefit through real app interaction. Continue existing 
 
 1. Ask the user for their scenario and wait for it. Use the scenario they supply.
 2. Once the scenario is available, ask which framing they want: top crop (`crop-top`), bottom crop (`crop-bottom`), or the whole phone (`full`). Wait for their choice before preparing the story for review.
+3. Obtain approval of the scenario, composition and timing. Then prepare and internally review the actual scene, record, export and complete [Visual acceptance](docs/visual-acceptance.md) before sending the finished video. There is no separate user-facing preview or storyboard approval stage.
 
 Ask one question at a time, in the conversation language. Treat information already supplied by the user as answered.
 
@@ -19,7 +20,8 @@ Ask one question at a time, in the conversation language. Treat information alre
 - Record the simulator at its native cadence. Watch scrolls and transitions at normal speed. Retake if the captured motion visibly stutters.
 - Deliver a 10–20 second, 1920×1920, constant-60-fps MP4 with a readable result and a loop. No editorial titles or captions; app text stays visible. Different requested formats require checking backend support.
 - Write the review copy of the user’s scenario, the saved scenario and on-screen content in English unless explicitly requested otherwise. Set `content.language` accordingly in both manifests. Explanations outside the scenario follow the user's conversation language.
-- For new videos, obtain approval of the story, then the actual prepared materials. A direct correction request authorizes that scope without another permission question; use the correction receipt when recording again. Never mark unseen materials as user-reviewed.
+- Scenario approval authorizes production within that story. Prepared materials still require internal review and evidence, not a second user decision. A direct correction request authorizes that scope; repeat affected checks before delivering the revised finished video. Never mark unseen materials as user-reviewed.
+- The first video sent to the user must meet the same requirements as every later delivery: complete content, tap indicators, timing, framing and full technical and visual checks. Keep technical rehearsals internal. Fix failed checks before sending; if a required check cannot be completed, report the blocker rather than offering an unchecked preview for approval. Reuse a passing take or export; do not repeat it just to rename it “final”.
 - Keep complete native transitions, scrolling and reading time. Shorten idle waits or simplify the story to fit the duration.
 - New videos use approved iPhone 17 or 18 family mockups and the bundled background palettes. Choose an available matching simulator model, phone color and background automatically; user preferences override these choices. Show the combination in the storyboard. See [Preparation](docs/preparation.md) for assets and capture matching.
 

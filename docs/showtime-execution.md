@@ -8,7 +8,7 @@ For a new video, first request the user’s scenario. Once received, ask separat
 
 Describe the setting, actors, supporting history/images and continuity. Keep names, avatars, dates and state consistent. Populate ordinary working screens plausibly; an intentionally empty editor needs no filler. Choose steps and pauses for the story, not a fixed tap count.
 
-Present the story, composition and timing for the first approval. Then prepare actual content and storyboard frames using [Preparation](preparation.md). Record decisions through [the approval contracts](review-workflow.md).
+Present the story, composition and timing for approval. Then prepare and internally review actual content and storyboard frames using [Preparation](preparation.md), and proceed through capture, export and verification without a second user approval. Record the scenario decision through [the approval contracts](review-workflow.md).
 
 ## Capture
 
@@ -18,7 +18,7 @@ For new videos, verify that the simulator's actual device type matches the selec
 python3 "$SHOWTIME/scripts/record_simulator.py" --simulator "$SIMULATOR_ID" --output "$RUN_DIR/raw.mp4" --scenario "$RUN_DIR/scenario.json" --prepared-content "$RUN_DIR/prepared-content.json" --approval-dir "$RUN_DIR/approvals" --tail-sentinel
 ```
 
-For an authorized correction, also pass `--revision-file <correction-authorization.json>`. Wait for `ready_ms` in `raw.clock.json`, then execute actions in another session:
+Wait for `ready_ms` in `raw.clock.json`, then execute actions in another session:
 
 ```bash
 python3 "$SHOWTIME/scripts/native_action.py" --axe "$AXE_BIN" --clock "$RUN_DIR/raw.clock.json" --journal "$RUN_DIR/actions.json" --id "$ACTION_ID" --type "$ACTION_TYPE" --viewport "$VIEWPORT_WIDTH" "$VIEWPORT_HEIGHT" --point "$X" "$Y" --step "$ACTION_STEP"
@@ -50,7 +50,7 @@ cp "$RUN_DIR/caption.txt" "$APP_TMP/showtime-caption.pending" && mv "$APP_TMP/sh
 
 Wait for `showtime-caption-result.json` in the same directory. Require its `value` to equal the input exactly. Save the result with the take: `characters` logs visible prefixes and Unix timestamps for journal alignment. The driver calls native `insertText:` once per composed character at approximately 30 per second. It saves the focused field's tint, makes it transparent during typing and restores it before reporting completion or an input error. Custom fields that draw their own caret need an app-specific hook if tint does not hide it. Treat the interval as typing with no tap coordinates. Verify caret and keyboard appearance in the encoded preview. Relaunch the app normally to end the driver session.
 
-Capture complete transitions, the result's reading interval and the loop return. Stop only this recorder with SIGINT using its clock's `recorder_pid`, and wait for completion. Exclude the late `--tail-sentinel` marker from the edit. Preparation-only captures are described in [Preparation](preparation.md#motion-preview).
+Capture complete transitions, the result's reading interval and the loop return. Stop only this recorder with SIGINT using its clock's `recorder_pid`, and wait for completion. Exclude the late `--tail-sentinel` marker from the edit. Internal technical rehearsals are described in [Preparation](preparation.md#internal-motion-checks).
 
 ## Edit
 
@@ -83,4 +83,6 @@ python3 "$SHOWTIME/scripts/render_quality.py" "$RUN_DIR/showtime.mp4" --report "
 
 Use the run's existing config for ongoing work. Always supply `--work-dir` inside the run. The product profile supplies the mockup, background and ready-to-use tap frames; no After Effects export is needed.
 
-The renderer enforces 600–1200 frames at 60 fps. Inspect the result using [Visual acceptance](visual-acceptance.md), including several uninterrupted loops. Deliver the video and actual verification findings; preserve source materials and record the next step in `run.json`.
+Always supply the edited events file. Use an explicit empty events list only when the scene has no taps or holds; never omit events to speed up a draft. Check the render report against the action journal and inspect every indicator in the encoded video.
+
+The renderer enforces 600–1200 frames at 60 fps. Before sending any video to the user, run the full delivery audit (not `--cadence-only`) and complete [Visual acceptance](visual-acceptance.md), including several uninterrupted loops. Fix failures and recheck affected behavior before delivery. If a required check is unavailable, report the blocker; do not request approval of an unchecked preview. Deliver the passing MP4 and actual verification findings; preserve source materials and record the next step in `run.json`. A passing export is the finished video; no additional “clean take” is required.

@@ -136,7 +136,7 @@ def validate_visible_targets(events, coord_size, scaled_size, crop_offset, scree
             raise ValueError(
                 f"Framing hides action {event.get('id', 'unnamed')} "
                 f"at ({px:.1f}, {py:.1f}). Adjust the scene to fit the selected frame "
-                "and get the revised preview approved before recording again."
+                "and repeat the internal preparation checks before recording again."
             )
 
 
@@ -279,12 +279,14 @@ def prepare(config, directory, preview=None):
 
 def load_events(path, source_size):
     if not path:
-        return [], source_size
+        raise ValueError("Supply --events for export; use an explicit empty list only for a scene without taps")
     value = json.loads(Path(path).read_text())
     if isinstance(value, list):
         return value, source_size
+    if not isinstance(value, dict) or not isinstance(value.get("events"), list):
+        raise ValueError("The events file must be a list or an object with an events list")
     space = value.get("coordinate_space", {})
-    return value.get("events", []), (space.get("width", source_size[0]), space.get("height", source_size[1]))
+    return value["events"], (space.get("width", source_size[0]), space.get("height", source_size[1]))
 
 
 def publish_video(candidate, output, sidecars):
@@ -330,9 +332,9 @@ def render(args, config, directory):
             raise ValueError("Use the approved profile and framing for export")
 
     duration = expected_frames / fps
+    events, (coord_w, coord_h) = load_events(args.events, (source_w, source_h))
     g = prepare(config, directory)
     sx, sy, sw, sh = g["screen"]
-    events, (coord_w, coord_h) = load_events(args.events, (source_w, source_h))
     if coord_w <= 0 or coord_h <= 0:
         raise ValueError("coordinate_space width and height must be positive")
     if abs((coord_w/coord_h) / (source_w/source_h)-1) > 0.01:
@@ -572,10 +574,10 @@ def main():
     p = sub.add_parser("prepare", help="Generate stage layers and explicitly marked technical preview")
     p.add_argument("--preview", type=Path)
     p.add_argument("--layout", choices=PRODUCT_LAYOUTS + ("full-device", "reference-crop", "media-spoilers-crop"))
-    p = sub.add_parser("render", help="Composite actual recording and optional PNG gesture events")
+    p = sub.add_parser("render", help="Composite actual recording with explicit gesture events")
     p.add_argument("--capture", required=True)
     p.add_argument("--layout", choices=PRODUCT_LAYOUTS + ("full-device", "reference-crop", "media-spoilers-crop"))
-    p.add_argument("--events")
+    p.add_argument("--events", required=True, help="Edited gesture events; an explicit empty list only for a scene without taps")
     p.add_argument("--tap-sequence", help="Override the profile's ready-to-use PNG sequence, e.g. /path/tap_%%05d.png")
     p.add_argument("--tap-anchor-frame", type=int)
     p.add_argument("--tap-width", type=int)
