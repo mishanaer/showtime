@@ -142,10 +142,13 @@ class RenderQualityTests(unittest.TestCase):
         self.assertEqual(report["failures"][0]["code"], "render_audit_error")
 
     def test_delivery_boundaries_use_decoded_frames_and_keep_cadence_result(self):
-        for count, expected in ((599, False), (600, True), (900, True), (960, True), (1200, True), (1201, False)):
+        for count, expected in ((599, False), (600, True), (900, True), (960, True),
+                                (1200, True), (1201, True), (3600, True)):
             with self.subTest(count=count):
                 report = self.audit(probe_fixture(count=count), delivery=True)
                 self.assertEqual(report["passed"], expected)
+                self.assertIsNone(report["delivery_policy"]["maximum_seconds"])
+                self.assertIsNone(report["delivery_policy"]["maximum_decoded_frames"])
                 self.assertEqual(report["render_cadence_60fps"], "passed")
                 self.assertEqual(report["delivery_duration"]["status"], "passed" if expected else "failed")
                 self.assertEqual(report["delivery_duration"]["seconds_at_verified_60fps"], count/60)
@@ -175,16 +178,17 @@ class RenderQualityTests(unittest.TestCase):
                 self.assertNotIn("delivery_policy", report)
 
     def test_delivery_preflight_quantizes_without_clamp_or_stretch(self):
-        for duration, expected in ((10, 600), (12.5, 750), (15, 900), (16, 960), (20, 1200), (10.004, 600), (14.99, 899)):
+        for duration, expected in ((10, 600), (12.5, 750), (15, 900), (16, 960), (20, 1200),
+                                   (1201/60, 1201), (60, 3600), (10.004, 600), (14.99, 899)):
             with self.subTest(duration=duration):
                 self.assertEqual(QUALITY.delivery_frame_count(duration), expected)
-        for duration in (599/60, 1201/60, 2, 21):
+        for duration in (599/60, 2):
             with self.subTest(duration=duration):
-                with self.assertRaisesRegex(ValueError, "10–20 seconds"):
+                with self.assertRaisesRegex(ValueError, "at least 10 seconds"):
                     QUALITY.delivery_frame_count(duration)
 
     def test_delivery_preflight_rejects_invalid_durations(self):
-        for duration in (None, True, False, "12", 0, -1, float("nan"), float("inf"), float("-inf"), 1e308):
+        for duration in (None, True, False, "12", 0, -1, float("nan"), float("inf"), float("-inf")):
             with self.subTest(duration=duration):
                 with self.assertRaises(ValueError):
                     QUALITY.delivery_frame_count(duration)
@@ -203,9 +207,9 @@ class RenderQualityTests(unittest.TestCase):
                 self.assertEqual(report["render_cadence_60fps"], "passed")
 
     def test_error_message_does_not_mislabel_duration_as_fps_failure(self):
-        report = self.audit(probe_fixture(count=1201), delivery=True)
+        report = self.audit(probe_fixture(count=599), delivery=True)
         error = QUALITY.RenderQualityError(report)
-        self.assertIn("10–20 seconds", str(error))
+        self.assertIn("at least 600 frames", str(error))
         self.assertNotIn("failed 60 fps validation", str(error))
 
 

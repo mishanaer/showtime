@@ -54,9 +54,8 @@ class CompositionPolicyTests(unittest.TestCase):
             self.assertEqual(quality.read_text(), "old report")
 
     def test_invalid_delivery_duration_stops_before_stage_or_encoder(self):
-        # Neither an explicit long cut nor the default full source may bypass
-        # the product limit. Zero must not silently select the source duration.
-        for requested, source_duration in ((9, 25), (21, 25), (None, 25), (0, 12)):
+        # Both explicit and inferred cuts must meet the minimum and fit the source.
+        for requested, source_duration in ((9, 25), (None, 9), (26, 25), (1e308, 25), (0, 12)):
             with self.subTest(requested=requested, source_duration=source_duration):
                 args = SimpleNamespace(capture="unused.mp4", duration=requested, capture_start=0)
                 with patch.object(compositor, "video_info", return_value=(402, 874, source_duration)), \

@@ -1,6 +1,6 @@
 ---
 name: showtime
-description: Create, revise, or review short product videos from a real app. Use for app demos, storyboards, or existing showtime videos. Supports iOS Simulator capture and local composition.
+description: Create, revise, or review product videos from a real app. Use for app demos, storyboards, or existing showtime videos. Supports iOS Simulator capture and local composition.
 ---
 
 # showtime
@@ -18,11 +18,11 @@ Ask one question at a time, in the conversation language. Treat information alre
 ## Defaults and boundaries
 
 - Record the simulator at its native cadence. Watch scrolls and transitions at normal speed. Retake if the captured motion visibly stutters.
-- Deliver a 10–20 second, 1920×1920, constant-60-fps MP4 with a readable result and a loop. No editorial titles or captions; app text stays visible. Different requested formats require checking backend support.
+- Let the approved scenario determine the length, with a 10-second minimum. Deliver a 1920×1920, constant-60-fps MP4 with a readable result and a loop. No editorial titles or captions; app text stays visible. Different requested formats require checking backend support.
 - Write the review copy of the user’s scenario, the saved scenario and on-screen content in English unless explicitly requested otherwise. Set `content.language` accordingly in both manifests. Explanations outside the scenario follow the user's conversation language.
 - Scenario approval authorizes production within that story. Prepared materials still require internal review and evidence, not a second user decision. A direct correction request authorizes that scope; repeat affected checks before delivering the revised finished video. Never mark unseen materials as user-reviewed.
 - The first video sent to the user must meet the same requirements as every later delivery: complete content, tap indicators, timing, framing and full technical and visual checks. Keep technical rehearsals internal. Fix failed checks before sending; if a required check cannot be completed, report the blocker rather than offering an unchecked preview for approval. Reuse a passing take or export; do not repeat it just to rename it “final”.
-- Keep complete native transitions, scrolling and reading time. Shorten idle waits or simplify the story to fit the duration.
+- Keep complete native transitions, scrolling and reading time. Trim idle waits.
 - New videos use approved iPhone 17 or 18 family mockups and the bundled background palettes. Choose an available matching simulator model, phone color and background automatically; user preferences override these choices. Show the combination in the storyboard. See [Preparation](docs/preparation.md) for assets and capture matching.
 
 - Apply the layout chosen by the user. Use `crop-top` for action near the top, `crop-bottom` for action near the composer, attachments or keyboard, and `full` to show the whole phone centered with 90 px above and below on a 1920 square. Use the selected framing in preparation, review and export.

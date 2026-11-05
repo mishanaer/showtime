@@ -20,7 +20,6 @@ FRAME_PERIOD = 1 / TARGET_FPS
 TIMESTAMP_TOLERANCE = Fraction(1, 2000)  # 0.5 ms, including muxer rounding.
 RATE_TOLERANCE = Fraction(1, 200)  # 0.005 fps; 59.94 is not exact 60.
 DELIVERY_MIN_FRAMES = 600
-DELIVERY_MAX_FRAMES = 1200
 
 
 class RenderQualityError(RuntimeError):
@@ -218,7 +217,7 @@ def require_render_60fps(path):
 
 
 def delivery_frame_count(duration):
-    """Quantize requested seconds to 60 fps, then enforce 600–1200 frames.
+    """Quantize requested seconds to 60 fps, then enforce the frame minimum.
 
     No clamping or stretching occurs. The caller must render exactly the returned
     count at 60 fps; source-video frame rate is irrelevant to this calculation.
@@ -232,9 +231,8 @@ def delivery_frame_count(duration):
     if seconds <= 0:
         raise ValueError("Enter a positive finite duration in seconds")
     frames = round(seconds * TARGET_FPS)
-    if not DELIVERY_MIN_FRAMES <= frames <= DELIVERY_MAX_FRAMES:
-        raise ValueError("The final video must last 10–20 seconds "
-                         "(600–1200 frames at 60 fps). Adjust the edit to fit.")
+    if frames < DELIVERY_MIN_FRAMES:
+        raise ValueError("The final video must last at least 10 seconds (600 frames at 60 fps).")
     return frames
 
 
@@ -243,14 +241,14 @@ def audit_delivery(path):
     report = audit_render(path)
     report["scope"] = "product_delivery"
     report["delivery_policy"] = {
-        "minimum_seconds": DELIVERY_MIN_FRAMES // 60, "maximum_seconds": DELIVERY_MAX_FRAMES // 60,
+        "minimum_seconds": DELIVERY_MIN_FRAMES // 60, "maximum_seconds": None,
         "minimum_decoded_frames": DELIVERY_MIN_FRAMES,
-        "maximum_decoded_frames": DELIVERY_MAX_FRAMES,
+        "maximum_decoded_frames": None,
         "target_fps": "60/1", "boundaries_inclusive": True,
         "automatic_clamp_or_stretch": False,
     }
     frames = report.get("decoded_frame_count")
-    frame_count_valid = type(frames) is int and DELIVERY_MIN_FRAMES <= frames <= DELIVERY_MAX_FRAMES
+    frame_count_valid = type(frames) is int and frames >= DELIVERY_MIN_FRAMES
     cadence_passed = report["render_cadence_60fps"] == "passed"
     # A 600-frame 30 fps file lasts 20 seconds, not 10. Do not derive its actual
     # duration from the target 60 fps when the cadence audit has failed.
@@ -263,8 +261,8 @@ def audit_delivery(path):
     }
     if not frame_count_valid:
         _fail(report, "delivery_frame_count_out_of_range",
-              "The final video must contain 600–1200 frames at 60 fps (10–20 seconds)",
-              actual_decoded_frames=frames, minimum=DELIVERY_MIN_FRAMES, maximum=DELIVERY_MAX_FRAMES)
+              "The final video must contain at least 600 frames at 60 fps (10 seconds)",
+              actual_decoded_frames=frames, minimum=DELIVERY_MIN_FRAMES, maximum=None)
     stream = report.get("stream", {})
     if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
         _fail(report, "delivery_dimensions", "The final video must be 1920 × 1920")
