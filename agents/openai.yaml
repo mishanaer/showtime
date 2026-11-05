@@ -1,4 +1,4 @@
 interface:
   display_name: "showtime"
-  short_description: "Create and refine short videos of real apps"
-  default_prompt: "Use $showtime to create a short product video of this app feature."
+  short_description: "Create and refine demo videos of real apps"
+  default_prompt: "Use $showtime to create a product video of this app feature."

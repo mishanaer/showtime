@@ -2,7 +2,7 @@
 """showtime pilot compositor. Python 3 + Pillow + NumPy + FFmpeg; no simulator access.
 
 prepare: creates a clearly marked technical preview and reusable stage layers.
-render:  real capture + optional timed PNG taps -> 10–20 s, 1920-square 60 fps MP4.
+render:  real capture + optional timed PNG taps -> 1920-square 60 fps MP4.
 compare: original on the left, showtime on the right, labelled 3840x2040 MP4.
 
 Events JSON: {"coordinate_space":{"width":402,"height":874},"events":[
@@ -583,7 +583,7 @@ def main():
     p.add_argument("--tap-width", type=int)
     p.add_argument("--tap-blur", type=float, help="Must be 0; use tap-soften.py for premultiplied-alpha spatial blur")
     p.add_argument("--capture-start", type=float, default=0)
-    p.add_argument("--duration", type=float, help="Final product video duration: 10–20 seconds including the complete loop")
+    p.add_argument("--duration", type=float, help="Final duration in seconds including the loop (minimum 10). Defaults to the remaining capture.")
     p.add_argument("--output", required=True)
     p.add_argument("--crf", type=int, default=18)
     p.add_argument("--preset", default="fast")
