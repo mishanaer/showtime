@@ -50,6 +50,20 @@ def validate_capture_clock(raw, capture=None):
             "legacy_unbound_event_count": raw.get("legacy_unbound_event_count", 0)}
 
 
+def derived_clock(take_review, edit_review, source_hash):
+    """Clock for the edited capture: carry the take's review forward unchanged.
+
+    Export checks human_review (approval, checked materials, profile hash), so the
+    edit packet must sit beside it, never replace it. An imported capture has no
+    take review and stays imported.
+    """
+    clock = {"human_review": take_review, "edit_review": edit_review,
+             "exit_code": 0, "source_sha256": source_hash}
+    if take_review:
+        clock["purpose"] = "final"
+    return clock
+
+
 def visual_gesture(event):
     """Translate recorded contact into visual timing; never infer hold from CLI duration."""
     result = {"id": event["id"], "type": event.get("type", "tap"),
@@ -117,7 +131,7 @@ def main():
     raw = json.loads(args.events.read_text())
     observations = json.loads(args.observations.read_text())
     clock_validation = validate_capture_clock(raw, source)
-    review = production_review(source)
+    take_review = production_review(source)
     metadata = probe(source)
     video = next(s for s in metadata["streams"] if s["codec_type"] == "video")
     duration = float(video.get("duration", metadata["format"]["duration"]))
@@ -164,8 +178,7 @@ def main():
     from edit_review import build_edit_review
     review = build_edit_review(normalized, intervals, observations, output / "edit-review", fps=FPS)
     if review:
-        save_json(capture.with_suffix(".clock.json"), {"purpose": "final", "human_review": review,
-                                                     "exit_code": 0, "source_sha256": source_hash})
+        save_json(capture.with_suffix(".clock.json"), derived_clock(take_review, review, source_hash))
     save_json(output/"events.json", {"coordinate_space": raw["coordinate_space"], "fps": FPS, "duration": cursor/FPS,
                                    "timing_note": raw.get("clock_note", "Command timing; physical touch-down is not measured."),
                                    "events": remap_gestures(plan["gestures"], intervals)})
