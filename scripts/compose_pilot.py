@@ -16,6 +16,7 @@ does not infer physical touch timing from command timestamps.
 import argparse
 import copy
 import tempfile
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -49,16 +50,28 @@ def load_config(path, layout=None):
     return use_layout(config, layout)
 
 
-def export_framing(config):
-    """What a take is bound to: the composition and the phone model it was framed for.
+# The only profile fields a take is not bound to: they change how the phone and
+# rings look, not where the recording sits, when rings appear or what is shown.
+EXPORT_ONLY = {"background": None, "name": None, "notes": None,
+               "tap": ("tint_rgb", "tint_note", "sequence"),
+               "device": ("id", "source", "color", "manifest", "sha256")}
 
-    Background, tap appearance and phone color may change after a take without
-    a new recording; layout, canvas and the phone's geometry may not.
+
+def bound_profile_sha256(config):
+    """Hash of everything in a resolved profile that a recorded take is bound to.
+
+    Includes the resolved stage geometry, so moving or resizing the phone in any
+    layout counts as a change.
     """
-    device = config["device"]
-    return {"layout": config["layout"], "canvas": [config["canvas"]["width"], config["canvas"]["height"]],
-            "model": device.get("model"), "source_size": list(device["source_size"]),
-            "screen_insets": list(device["screen_insets"])}
+    bound = copy.deepcopy(config)
+    for section, fields in EXPORT_ONLY.items():
+        if fields is None:
+            bound.pop(section, None)
+        else:
+            for field in fields:
+                bound.get(section, {}).pop(field, None)
+    bound["stage_geometry"] = geometry(config)
+    return hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def check_export_profile(review, config_path, layout=None):
@@ -66,17 +79,16 @@ def check_export_profile(review, config_path, layout=None):
     approved = review.get("profile_sha256")
     if not approved:
         return None
-    config = load_config(config_path, layout)
     if sha256(config_path) == approved and layout in (None, load_config(config_path)["layout"]):
         return {"profile": "approved"}
-    framing = review.get("profile_framing")
-    if framing is None:
+    bound = review.get("profile_bound_sha256")
+    if bound is None:
         raise ValueError("Use the approved profile and framing for export (this take predates export-only profile changes)")
-    if export_framing(config) != framing:
-        raise ValueError("Layout and phone model are bound to the approved preparation; "
-                         "change only the background, tap appearance or phone color, or record a new take")
+    if bound_profile_sha256(load_config(config_path, layout)) != bound:
+        raise ValueError("After a take only the background, the tap ring color or frames and the phone color may change; "
+                         "record a new take for any other profile change")
     return {"profile": "changed after the take", "approved_profile_sha256": approved,
-            "export_profile_sha256": sha256(config_path), "framing": "unchanged"}
+            "export_profile_sha256": sha256(config_path), "bound_fields": "unchanged"}
 
 
 def validate_editorial_policy(config):

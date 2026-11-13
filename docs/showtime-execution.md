@@ -54,7 +54,7 @@ Capture complete transitions, the result's reading interval and the loop return.
 
 ## Edit
 
-Watch the source and create `observations.json`; do not infer UI completion from command timings. The contract in `scripts/scene_timeline.py` is:
+Watch the source and create `observations.json`; do not infer UI completion from command timings. To read a frame at a time, seek before the input (`ffmpeg -ss T -i raw.mp4`): simulator recordings can carry broken decode timestamps. The contract in `scripts/scene_timeline.py` is:
 
 ```text
 schema_version: 1

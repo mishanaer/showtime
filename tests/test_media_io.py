@@ -20,20 +20,15 @@ class FrameTimeTests(unittest.TestCase):
             result = MEDIA.check_frame_times("take.mp4")
         return result, call.call_args.args[0]
 
-    def test_presentation_times_pass_and_dts_is_ignored(self):
-        result, command = self.check(["0.000000,0.000000", "1.675000,1.675000,", "1.675000,1.675000"])
+    def test_presentation_times_pass(self):
+        result, _ = self.check(["0.000000", "1.675000,", "1.675000"])
         self.assertEqual(result["frames"], 3)
-        self.assertIn("+igndts", command)
-
-    def test_frame_decoded_away_from_its_presentation_time_fails(self):
-        with self.assertRaisesRegex(ValueError, "decodes at 3.120 s instead of 4.822 s"):
-            self.check(["0.000000,0.000000", "4.821667,3.120000"])
 
     def test_backwards_or_missing_times_fail(self):
         with self.assertRaisesRegex(ValueError, "go backwards"):
-            self.check(["2.000000,2.000000", "1.000000,1.000000"])
+            self.check(["2.000000", "1.000000"])
         with self.assertRaisesRegex(ValueError, "no presentation time"):
-            self.check(["N/A,0.500000"])
+            self.check(["N/A"])
         with self.assertRaisesRegex(ValueError, "no video frames"):
             self.check([])
 

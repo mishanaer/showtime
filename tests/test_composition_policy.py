@@ -136,7 +136,7 @@ class ExportProfileTests(unittest.TestCase):
         self.product = json.loads(compositor.DEFAULT_CONFIG.read_text())
         self.approved = self.write("approved.json", self.product)
         self.review = {"profile_sha256": compositor.sha256(self.approved),
-                       "profile_framing": compositor.export_framing(compositor.load_config(self.approved))}
+                       "profile_bound_sha256": compositor.bound_profile_sha256(compositor.load_config(self.approved))}
 
     def write(self, name, profile):
         path = self.root / name
@@ -163,7 +163,7 @@ class ExportProfileTests(unittest.TestCase):
             profile["device"].update(id="iphone-17-pro-deep-blue", color="Deep Blue",
                                      source="../assets/showtime/phones/iphone-17-pro-deep-blue.png")
         result = compositor.check_export_profile(self.review, self.variant(recolor))
-        self.assertEqual(result["framing"], "unchanged")
+        self.assertEqual(result["bound_fields"], "unchanged")
         self.assertEqual(result["approved_profile_sha256"], self.review["profile_sha256"])
 
     def test_layout_or_phone_model_change_needs_a_new_take(self):
@@ -173,6 +173,19 @@ class ExportProfileTests(unittest.TestCase):
         for path, layout in ((self.approved, "full"), (self.variant(pro_max), None)):
             with self.subTest(layout=layout), self.assertRaisesRegex(ValueError, "record a new take"):
                 compositor.check_export_profile(self.review, path, layout)
+
+    def test_ring_timing_size_captions_and_phone_position_are_bound(self):
+        changes = {
+            "anchor": lambda profile: profile["tap"].update(anchor_frame=20),
+            "ring size": lambda profile: profile["tap"].update(maximum_diameter_fraction=0.3),
+            "caption": lambda profile: profile.update(caption={"text": "New"}),
+            "corner radius": lambda profile: profile["device"].update(screen_radius_fraction=[0.05, 0.03]),
+            "phone position": lambda profile: profile["layouts"]["full-device"].update(left=100),
+        }
+        for name, change in changes.items():
+            layout = "full-device" if name == "phone position" else None
+            with self.subTest(change=name), self.assertRaisesRegex(ValueError, "record a new take"):
+                compositor.check_export_profile(self.review, self.variant(change), layout)
 
     def test_take_without_recorded_framing_stays_strict(self):
         review = {"profile_sha256": self.review["profile_sha256"]}

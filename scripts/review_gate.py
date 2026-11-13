@@ -345,9 +345,12 @@ def check_review_gate(scenario_manifest, prepared_manifest, approval_dir, revisi
                           base_prepared_approval_sha256=expected["base_prepared_approval_sha256"],
                           revision_sha256=canonical_sha256(revision))
         profile = prepared["manifest"]["content"]["preparation"]["profile"]
-        from compose_pilot import export_framing, load_config
-        result.update(profile_sha256=profile["sha256"],
-                      profile_framing=export_framing(load_config(Path(prepared_manifest).resolve().parent / profile["path"])),
+        from compose_pilot import bound_profile_sha256, load_config
+        try:
+            bound = bound_profile_sha256(load_config(Path(prepared_manifest).resolve().parent / profile["path"]))
+        except (OSError, KeyError, TypeError, ValueError) as error:
+            raise ReviewGateError(f"The run profile cannot be read: {error}") from error
+        result.update(profile_sha256=profile["sha256"], profile_bound_sha256=bound,
                       stage="recording", prepared_sha256=prepared["manifest_sha256"], story_materials_checked=True)
     return result
 
