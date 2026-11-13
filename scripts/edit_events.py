@@ -10,7 +10,7 @@ import math
 from pathlib import Path
 import subprocess
 
-from media_io import probe, run, save_json, sha256, production_review, review_for_clock
+from media_io import probe, run, save_json, sha256, production_review, review_for_clock, check_frame_times, DECODE_BY_PTS
 from gesture_timing import gesture_frame_map
 from scene_timeline import plan_scene_intervals
 from native_action import capture_reference
@@ -143,7 +143,8 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     # Sample before trimming so a held frame remains visible until the next update.
     normalized = work / "capture-60fps.mp4"
-    run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", source,
+    frame_times = check_frame_times(source)
+    run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *DECODE_BY_PTS, "-i", source,
          "-vf", "fps=60:start_time=0:round=near", "-an", "-c:v", "libx264", "-preset", "fast",
          "-crf", "17", "-threads", "4", "-pix_fmt", "yuv420p", normalized])
     normalized_probe = probe(normalized)
@@ -186,7 +187,8 @@ def main():
         "event_log": str(args.events.resolve()), "event_log_sha256": sha256(args.events),
         "observations": str(args.observations.resolve()), "observations_sha256": sha256(args.observations),
         "method": "Reviewed outcomes: completed transitions, visible results, cleared overlays and reading time; protect continuous motion and gestures.",
-        "native_speed": 1.0, "sampling": "VFR sampled at 60 fps; native speed, no motion interpolation",
+        "native_speed": 1.0, "sampling": "VFR sampled at 60 fps by presentation time; native speed, no motion interpolation",
+        "source_frame_times": frame_times,
         "normalized_capture": str(normalized), "normalized_capture_sha256": sha256(normalized),
         "segments": segments, "state_checks": plan["checks"], "capture_clock_validation": clock_validation,
         "frames": cursor, "duration": cursor/FPS, "output_sha256": sha256(capture), "output_probe": final_probe,
