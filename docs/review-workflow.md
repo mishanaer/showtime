@@ -48,7 +48,7 @@ Changes to other fields or referenced files require updated hashes and another i
 
 ## Requested corrections
 
-An explicit correction request authorizes that scope without another confirmation. Keep the actual user request in the run's records. For scene corrections, retain the approved scenario, update the prepared materials and repeat internal checks. For a directly requested story change, record that instruction as the decision for the revised scenario. Export-only fixes may reuse existing footage. Apply the full delivery checklist to the revised MP4 before sending it.
+An explicit correction request authorizes that scope without another confirmation. Keep the actual user request in the run's records. For scene corrections, retain the approved scenario, update the prepared materials and repeat internal checks. For a directly requested story change, record that instruction as the decision for the revised scenario. Export-only fixes may reuse existing footage: background, tap appearance and phone color, not layout or phone model. Apply the full delivery checklist to the revised MP4 before sending it.
 
 Historical runs may still contain prepared-content approvals and `--revision-file` correction receipts. The legacy `approve --prepared-content` and `authorize-correction` commands remain supported for those records; do not generate them for new runs. Existing receipts are preserved, but the normal recording path no longer depends on a second user decision.
 

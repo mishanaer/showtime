@@ -344,7 +344,10 @@ def check_review_gate(scenario_manifest, prepared_manifest, approval_dir, revisi
                           correction_scope_automatically_verified=False,
                           base_prepared_approval_sha256=expected["base_prepared_approval_sha256"],
                           revision_sha256=canonical_sha256(revision))
-        result.update(profile_sha256=prepared["manifest"]["content"]["preparation"]["profile"]["sha256"],
+        profile = prepared["manifest"]["content"]["preparation"]["profile"]
+        from compose_pilot import export_framing, load_config
+        result.update(profile_sha256=profile["sha256"],
+                      profile_framing=export_framing(load_config(Path(prepared_manifest).resolve().parent / profile["path"])),
                       stage="recording", prepared_sha256=prepared["manifest_sha256"], story_materials_checked=True)
     return result
 

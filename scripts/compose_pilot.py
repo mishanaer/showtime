@@ -49,6 +49,36 @@ def load_config(path, layout=None):
     return use_layout(config, layout)
 
 
+def export_framing(config):
+    """What a take is bound to: the composition and the phone model it was framed for.
+
+    Background, tap appearance and phone color may change after a take without
+    a new recording; layout, canvas and the phone's geometry may not.
+    """
+    device = config["device"]
+    return {"layout": config["layout"], "canvas": [config["canvas"]["width"], config["canvas"]["height"]],
+            "model": device.get("model"), "source_size": list(device["source_size"]),
+            "screen_insets": list(device["screen_insets"])}
+
+
+def check_export_profile(review, config_path, layout=None):
+    """Return how the export profile relates to the approved one, or raise."""
+    approved = review.get("profile_sha256")
+    if not approved:
+        return None
+    config = load_config(config_path, layout)
+    if sha256(config_path) == approved and layout in (None, load_config(config_path)["layout"]):
+        return {"profile": "approved"}
+    framing = review.get("profile_framing")
+    if framing is None:
+        raise ValueError("Use the approved profile and framing for export (this take predates export-only profile changes)")
+    if export_framing(config) != framing:
+        raise ValueError("Layout and phone model are bound to the approved preparation; "
+                         "change only the background, tap appearance or phone color, or record a new take")
+    return {"profile": "changed after the take", "approved_profile_sha256": approved,
+            "export_profile_sha256": sha256(config_path), "framing": "unchanged"}
+
+
 def validate_editorial_policy(config):
     if config.get("policy", {}).get("editorial_text") is False and config.get("caption"):
         raise ValueError("This profile excludes editorial text. Remove caption from the configuration.")
@@ -327,9 +357,7 @@ def render(args, config, directory):
         raise ValueError("The final video must be exactly 60 fps")
     expected_frames = delivery_frame_count(duration)
     review = production_review(args.capture)
-    if review.get("profile_sha256"):
-        if sha256(args.config) != review["profile_sha256"] or getattr(args, "layout", None) not in (None, load_config(args.config)["layout"]):
-            raise ValueError("Use the approved profile and framing for export")
+    profile_check = check_export_profile(review, args.config, getattr(args, "layout", None))
 
     duration = expected_frames / fps
     events, (coord_w, coord_h) = load_events(args.events, (source_w, source_h))
@@ -489,7 +517,7 @@ def render(args, config, directory):
         if quality["decoded_frame_count"] != expected_frames:
             raise ValueError("The render is missing planned frames")
         quality["output"] = str(output.resolve())
-        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"tap":{"sequence":tap_sequence,"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
+        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
         report["layout"] = config.get("layout")
         report["quality"] = quality
         report["tap"]["tint_rgb"] = tap.get("tint_rgb", monochrome_rgb)

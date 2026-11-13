@@ -127,3 +127,58 @@ class CompositionPolicyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExportProfileTests(unittest.TestCase):
+    """A take is bound to its layout and phone model, not to colors."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.product = json.loads(compositor.DEFAULT_CONFIG.read_text())
+        self.approved = self.write("approved.json", self.product)
+        self.review = {"profile_sha256": compositor.sha256(self.approved),
+                       "profile_framing": compositor.export_framing(compositor.load_config(self.approved))}
+
+    def write(self, name, profile):
+        path = self.root / name
+        profile = json.loads(json.dumps(profile))
+        for parent, key in ((profile["device"], "source"), (profile["device"], "manifest"),
+                            (profile["background"], "source"), (profile["tap"], "sequence")):
+            parent[key] = str((compositor.DEFAULT_CONFIG.parent / parent[key]).resolve())
+        path.write_text(json.dumps(profile))
+        return path
+
+    def variant(self, change):
+        profile = json.loads(json.dumps(self.product))
+        change(profile)
+        return self.write("variant.json", profile)
+
+    def test_unbound_capture_and_the_approved_profile_pass(self):
+        self.assertIsNone(compositor.check_export_profile({}, self.approved))
+        self.assertEqual(compositor.check_export_profile(self.review, self.approved), {"profile": "approved"})
+
+    def test_background_tap_color_and_phone_color_may_change(self):
+        def recolor(profile):
+            profile["background"].update(id="sage", palette=["#dbddbb", "#6ba587", "#d5d88d", "#88b884"])
+            profile["tap"]["tint_rgb"] = [255, 255, 255]
+            profile["device"].update(id="iphone-17-pro-deep-blue", color="Deep Blue",
+                                     source="../assets/showtime/phones/iphone-17-pro-deep-blue.png")
+        result = compositor.check_export_profile(self.review, self.variant(recolor))
+        self.assertEqual(result["framing"], "unchanged")
+        self.assertEqual(result["approved_profile_sha256"], self.review["profile_sha256"])
+
+    def test_layout_or_phone_model_change_needs_a_new_take(self):
+        def pro_max(profile):
+            profile["device"].update(model="iPhone 17 Pro Max", source_size=[1470, 3000],
+                                     screen_insets=[67, 76, 67, 76])
+        for path, layout in ((self.approved, "full"), (self.variant(pro_max), None)):
+            with self.subTest(layout=layout), self.assertRaisesRegex(ValueError, "record a new take"):
+                compositor.check_export_profile(self.review, path, layout)
+
+    def test_take_without_recorded_framing_stays_strict(self):
+        review = {"profile_sha256": self.review["profile_sha256"]}
+        changed = self.variant(lambda profile: profile["tap"].update(tint_rgb=[255, 255, 255]))
+        with self.assertRaisesRegex(ValueError, "predates export-only profile changes"):
+            compositor.check_export_profile(review, changed)

@@ -81,7 +81,7 @@ python3 "$SHOWTIME/scripts/compose_pilot.py" --config "$RUN_DIR/profile.json" --
 python3 "$SHOWTIME/scripts/render_quality.py" "$RUN_DIR/showtime.mp4" --report "$RUN_DIR/render-quality.json"
 ```
 
-Use the run's existing config for ongoing work. Always supply `--work-dir` inside the run. The product profile supplies the mockup, background and ready-to-use tap frames; no After Effects export is needed.
+Use the run's existing config for ongoing work. Always supply `--work-dir` inside the run. After a take, the run profile may change the background, the tap appearance and the phone color without a new recording; the render report records the change under `profile_check`. The layout, the canvas and the phone model (its size and screen insets) stay bound to the prepared materials: changing them requires new preparation evidence and a new take. The product profile supplies the mockup, background and ready-to-use tap frames; no After Effects export is needed.
 
 Always supply the edited events file. Use an explicit empty events list only when the scene has no taps or holds; never omit events to speed up a draft. Check the render report against the action journal and inspect every indicator in the encoded video.
 

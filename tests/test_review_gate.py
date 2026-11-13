@@ -112,6 +112,8 @@ class ReviewGateTests(unittest.TestCase):
         result = self.check_recording()
         self.assertEqual(result["stage"], "recording")
         self.assertTrue(result["story_materials_checked"])
+        self.assertEqual(set(result["profile_framing"]),
+                         {"layout", "canvas", "model", "source_size", "screen_insets"})
         self.assertFalse(result["target_user_reviewed"])
         self.assertFalse(result["visual_quality_automatically_verified"])
         self.assertNotIn("prepared_approval_sha256", result)
