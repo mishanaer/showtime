@@ -5,6 +5,8 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -23,6 +25,7 @@ def load_script(name):
 
 
 EDITOR = load_script("edit_events")
+MEDIA = load_script("media_io")
 NATIVE_ACTION = load_script("native_action")
 SOURCE_HASH = "a" * 64
 
@@ -219,3 +222,52 @@ class NativeActionJournalTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg/ffprobe required")
+class EditToExportReviewTests(unittest.TestCase):
+    """The edited capture must keep the take's review so export accepts it."""
+
+    TAKE_REVIEW = {"approved": True, "stage": "recording", "story_materials_checked": True,
+                   "profile_sha256": "b" * 64, "prepared_sha256": "c" * 64}
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.take = self.root / "take.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=402x874:rate=60:duration=8",
+                        "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", str(self.take)], check=True)
+        self.clock = {"purpose": "final", "human_review": self.TAKE_REVIEW, "ready_ms": 1000.0,
+                      "exit_code": 0, "wall_clock_drift_seconds": 0.001}
+
+    def edit(self, with_take_clock):
+        if with_take_clock:
+            (self.root / "take.clock.json").write_text(json.dumps(self.clock))
+        events = self.root / "actions.json"
+        events.write_text(json.dumps({"coordinate_space": {"width": 402, "height": 874}, "capture_clock": self.clock,
+            "events": [{"id": "tap", "type": "tap", "source_start": 4.0, "source_end": 4.1,
+                        "point": [201, 437], "alignment": "hid_dispatch_estimate"}]}))
+        observations = self.root / "observations.json"
+        observations.write_text(json.dumps({"schema_version": 1, "capture_sha256": EDITOR.sha256(self.take),
+            "review_status": "reviewed", "protected_ranges": [],
+            "steps": [{"event_id": "tap", "response_start": 4.1, "transition_end": 4.4, "result_ready": 4.4,
+                       "overlays_clear": 4.1, "read_seconds": 1.0}]}))
+        argv = ["edit_events.py", "--capture", str(self.take), "--events", str(events),
+                "--observations", str(observations), "--output-dir", str(self.root / "edit")]
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(sys, "stdout", io.StringIO()):
+            EDITOR.main()
+        edited = self.root / "edit" / "edited-capture.mp4"
+        return edited, json.loads(edited.with_suffix(".clock.json").read_text())
+
+    def test_cut_take_keeps_review_that_export_requires(self):
+        edited, clock = self.edit(with_take_clock=True)
+        self.assertEqual(clock["purpose"], "final")
+        self.assertEqual(clock["human_review"], self.TAKE_REVIEW)
+        self.assertEqual(clock["edit_review"]["status"], "needs_visual_review")
+        self.assertEqual(MEDIA.production_review(edited), self.TAKE_REVIEW)
+
+    def test_imported_capture_stays_imported_after_edit(self):
+        edited, clock = self.edit(with_take_clock=False)
+        self.assertNotIn("purpose", clock)
+        self.assertEqual(MEDIA.production_review(edited), {})
