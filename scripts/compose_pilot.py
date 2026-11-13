@@ -526,13 +526,14 @@ def render(args, config, directory):
         run(inputs+["-filter_complex_threads", "2", "-filter_complex", ";".join(filters), "-map", "[out]", "-an", "-t", str(duration), "-frames:v", str(expected_frames), "-r", str(fps), "-c:v", "libx264", "-preset", args.preset, "-crf", str(args.crf), "-movflags", "+faststart", str(candidate)])
         quality = audit_delivery(candidate)
         if quality["passed"] and event_report:
-            audit_tap_rings(candidate, event_report, tap_width * 750 / 1080, quality)
+            audit_tap_rings(candidate, {"sequence": tap_sequence, "start_number": tap["start_number"], "width": tap_width,
+                                        "frames": expected_frames, "events": event_report}, quality)
         if not quality["passed"]:
             raise RenderQualityError(quality)
         if quality["decoded_frame_count"] != expected_frames:
             raise ValueError("The render is missing planned frames")
         quality["output"] = str(output.resolve())
-        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"screen_bleed":SCREEN_BLEED,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
+        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"screen_bleed":SCREEN_BLEED,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"start_number":tap["start_number"],"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
         report["layout"] = config.get("layout")
         report["quality"] = quality
         report["tap"]["tint_rgb"] = tap.get("tint_rgb", monochrome_rgb)

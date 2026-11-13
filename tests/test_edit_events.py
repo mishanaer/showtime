@@ -220,9 +220,6 @@ class NativeActionJournalTests(unittest.TestCase):
         self.assertFalse(self.journal.exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg/ffprobe required")
 class EditToExportReviewTests(unittest.TestCase):
@@ -271,3 +268,7 @@ class EditToExportReviewTests(unittest.TestCase):
         edited, clock = self.edit(with_take_clock=False)
         self.assertNotIn("purpose", clock)
         self.assertEqual(MEDIA.production_review(edited), {})
+
+
+if __name__ == "__main__":
+    unittest.main()

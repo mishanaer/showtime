@@ -125,9 +125,6 @@ class CompositionPolicyTests(unittest.TestCase):
                 self.assertFalse((root / "capture.clock.json").exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class ExportProfileTests(unittest.TestCase):
     """A take is bound to its layout and phone model, not to colors."""
@@ -229,3 +226,7 @@ class ScreenEdgeTests(unittest.TestCase):
                     for edge in edges:
                         magenta = (edge[..., 0] - edge[..., 1] > 40) & (edge[..., 2] - edge[..., 1] > 40)
                         self.assertFalse(magenta.any())
+
+
+if __name__ == "__main__":
+    unittest.main()

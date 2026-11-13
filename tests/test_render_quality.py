@@ -218,9 +218,6 @@ class RenderQualityTests(unittest.TestCase):
         self.assertNotIn("failed 60 fps validation", str(error))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 @unittest.skipUnless(__import__("shutil").which("ffmpeg"), "ffmpeg required")
 class MediaChecksTests(unittest.TestCase):
@@ -270,13 +267,41 @@ class MediaChecksTests(unittest.TestCase):
             with self.subTest(code=code):
                 self.assertIn(code, self.media(path)[1])
 
-    def test_missing_tap_ring_fails(self):
-        # A gray screen where a 40 px "ring" shows only around frame 25.
-        path = self.encode("ring.mp4", "color=gray:size=1920x1920:rate=60:duration=1",
-                           "-vf", "drawbox=x=480:y=480:w=40:h=40:color=white:t=fill:enable='between(n,15,34)'",
-                           "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast")
-        event = {"id": "tap", "anchor_output_frame": 25, "tap_end_frame": 40}
-        shown = QUALITY.audit_tap_rings(path, [dict(event, canvas_point=[500, 500])], 60, {"failures": []})
+    def ring_video(self, name, background, start=10):
+        """A plain screen with the bundled ring sequence drawn at (500, 500) from frame `start`."""
+        sequence = str(Path(QUALITY.__file__).resolve().parents[1] / "assets/tap/native/tap_%05d.png")
+        path = self.root / name
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"color={background}:size=1920x1920:rate=60:duration=1.2",
+                        "-framerate", "60", "-start_number", "0", "-i", sequence, "-filter_complex",
+                        f"[1:v]setpts=PTS+{start}/(60*TB)[ring];[0:v][ring]overlay=x=500-540:y=500-540:eof_action=pass",
+                        "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "12", str(path)], check=True)
+        return path, sequence
+
+    def rings(self, sequence, point, start=10):
+        event = {"id": "tap", "tap_start_frame": start, "anchor_output_frame": start + 25, "tap_end_frame": start + 40,
+                 "canvas_point": point, "tint_rgb": [49, 123, 255], "source_frame_map": list(range(41))}
+        return {"sequence": sequence, "start_number": 0, "width": 1080, "frames": 72, "events": [event]}
+
+    def test_tap_ring_is_found_where_it_is_drawn(self):
+        path, sequence = self.ring_video("ring.mp4", "gray")
+        shown = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500]), {"failures": []})
         self.assertTrue(shown["passed"])
-        missing = QUALITY.audit_tap_rings(path, [dict(event, canvas_point=[1400, 1400])], 60, {"failures": []})
-        self.assertEqual([f["code"] for f in missing["failures"]], ["tap_ring_invisible"])
+        self.assertEqual(shown["tap_rings"][0]["status"], "passed")
+        elsewhere = QUALITY.audit_tap_rings(path, self.rings(sequence, [1400, 1400]), {"failures": []})
+        self.assertEqual([f["code"] for f in elsewhere["failures"]], ["tap_ring_invisible"])
+
+    def test_ring_matching_the_screen_is_unverifiable_not_missing(self):
+        path, sequence = self.ring_video("same.mp4", "0x317BFF")
+        result = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500]), {"failures": []})
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tap_rings"][0]["status"], "unverifiable")
+
+    def test_ring_at_the_first_frame_is_compared_with_the_frame_after_it(self):
+        path, sequence = self.ring_video("first.mp4", "gray", start=0)
+        result = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500], start=0), {"failures": []})
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tap_rings"][0]["reference_frame"], 41)
+
+
+if __name__ == "__main__":
+    unittest.main()

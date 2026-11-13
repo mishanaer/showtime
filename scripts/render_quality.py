@@ -287,7 +287,8 @@ def _audit_media(path, report):
 
 CONTENT_SIZE = 64  # decoded thumbnail edge for content checks
 BLANK_RANGE = 8  # luma levels; a real app screen spans far more
-RING_MIN_DIFFERENCE = 2.0  # mean absolute luma change inside the ring at contact
+RING_MIN_EXPECTED = 3.0  # below this the ring tint barely differs from the screen under it
+RING_MIN_SHARE = 0.35  # share of the expected tint change that must actually show
 
 
 def _probe_streams(path):
@@ -344,37 +345,68 @@ def _audit_content(path, report):
         _fail(report, "content_static", "Nothing changes in the final video")
 
 
-def audit_tap_rings(path, events, ring_diameter, report):
-    """Each tap ring must change the picture at its contact frame.
+def _decode_rgb_crop(path, frame, box):
+    width, height = box[2] - box[0], box[3] - box[1]
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-vf",
+                          f"select=eq(n\\,{frame}),format=rgb24,crop={width}:{height}:{box[0]}:{box[1]}",
+                          "-vsync", "0", "-frames:v", "1", "-f", "rawvideo", "-"],
+                         check=True, capture_output=True, timeout=600).stdout
+    if len(raw) != width * height * 3:
+        return None
+    return np.frombuffer(raw, np.uint8).reshape(height, width, 3).astype(np.float32)
 
-    Compares the ring's area at the contact frame with the first frame after the
-    ring has finished. A missing or invisible ring leaves that area unchanged
-    unless the app itself changes there, so this catches absence, not position.
+
+def audit_tap_rings(path, rings, report):
+    """Each tap ring must tint the picture where and when it is drawn.
+
+    rings: {"sequence", "start_number", "width", "frames", "events"} from the render.
+    The ring's own alpha at the contact frame weights a comparison between the
+    contact frame and a frame without this ring (just before it starts, or just
+    after it ends). The expected change is what that ring's tint would do to the
+    reference picture; when the tint is too close to the screen under it (a white
+    ring on a white app) the ring is reported as unverifiable, not as missing.
+    A change in the app under the ring can hide a missing ring; a ring that is
+    present but off target fails like a missing one.
     """
+    from PIL import Image
     results = []
-    for event in events:
-        contact, after = event["anchor_output_frame"], event["tap_end_frame"] + 1
-        x, y = event["canvas_point"]
-        radius = ring_diameter / 2
-        box = [max(0, round(x - radius)), max(0, round(y - radius)),
-               min(1920, round(x + radius)), min(1920, round(y + radius))]
-        crop = f"crop={box[2]-box[0]}:{box[3]-box[1]}:{box[0]}:{box[1]}"
-        command = ["ffmpeg", "-v", "error", "-i", str(path), "-vf",
-                   f"select=eq(n\\,{contact})+eq(n\\,{after}),format=gray,{crop}",
-                   "-vsync", "0", "-f", "rawvideo", "-"]
-        raw = subprocess.run(command, check=True, capture_output=True, timeout=600).stdout
-        height, width = box[3] - box[1], box[2] - box[0]
-        pair = np.frombuffer(raw, np.uint8).astype(np.int16)
-        if pair.size != 2 * width * height:
-            _fail(report, "tap_ring_frames_missing", "The tap ring frames are outside the video", event=event.get("id"))
+    width, total = rings["width"], rings["frames"]
+    for event in rings["events"]:
+        contact, start, end = event["anchor_output_frame"], event["tap_start_frame"], event["tap_end_frame"]
+        reference = start - 1 if start >= 1 else end + 1 if end + 1 < total else None
+        result = {"id": event.get("id"), "contact_frame": contact, "reference_frame": reference}
+        results.append(result)
+        if reference is None:
+            result["status"] = "unverifiable"
             continue
-        pair = pair.reshape(2, height, width)
-        difference = float(np.abs(pair[0] - pair[1]).mean())
-        results.append({"id": event.get("id"), "contact_frame": contact, "compared_frame": after,
-                        "mean_difference": round(difference, 2)})
-        if difference < RING_MIN_DIFFERENCE:
+        index = rings.get("start_number", 0) + event["source_frame_map"][contact - start]
+        with Image.open(rings["sequence"] % index) as image:
+            alpha = image.getchannel("A").resize((width, width), Image.BILINEAR)
+        alpha = np.asarray(alpha, np.float32) / 255
+        x, y = event["canvas_point"]
+        left, top = round(x - width / 2), round(y - width / 2)
+        box = [max(0, left), max(0, top), min(1920, left + width), min(1920, top + width)]
+        alpha = alpha[box[1] - top:box[3] - top, box[0] - left:box[2] - left]
+        frames = [_decode_rgb_crop(path, n, box) for n in (contact, reference)]
+        if any(frame is None for frame in frames) or alpha.sum() <= 0:
+            _fail(report, "tap_ring_frames_missing", "The tap ring frames are outside the video", event=event.get("id"))
+            result["status"] = "failed"
+            continue
+        drawn, plain = frames
+        weight = alpha[..., None]
+        tint = np.asarray(event.get("tint_rgb", [255, 255, 255]), np.float32)
+        observed = float((weight * np.abs(drawn - plain)).sum() / (3 * alpha.sum()))
+        expected = float((weight * weight * np.abs(tint - plain)).sum() / (3 * alpha.sum()))
+        result.update(observed_change=round(observed, 2), expected_change=round(expected, 2))
+        if expected < RING_MIN_EXPECTED:
+            result["status"] = "unverifiable"
+        elif observed < RING_MIN_SHARE * expected:
+            result["status"] = "failed"
             _fail(report, "tap_ring_invisible", "A tap ring does not show at its contact frame",
-                  event=event.get("id"), mean_difference=round(difference, 2))
+                  event=event.get("id"), observed_change=result["observed_change"],
+                  expected_change=result["expected_change"])
+        else:
+            result["status"] = "passed"
     report["tap_rings"] = results
     report["passed"] = not report["failures"]
     return report
@@ -395,8 +427,15 @@ def main():
     report = (audit_render if args.cadence_only else audit_delivery)(args.render)
     if args.render_report and not args.cadence_only:
         render = json.loads(args.render_report.read_text())
-        ring = render["tap"]["width"] * 750 / 1080
-        audit_tap_rings(args.render, render.get("events", []), ring, report)
+        if render.get("quality", {}).get("output_sha256") not in (None, report.get("output_sha256")):
+            _fail(report, "render_report_mismatch", "The render report belongs to another video")
+        elif render.get("events"):
+            try:
+                audit_tap_rings(args.render, {**render["tap"], "frames": report.get("decoded_frame_count") or 0,
+                                              "events": render["events"]}, report)
+            except (OSError, KeyError, ValueError, subprocess.SubprocessError) as error:
+                _fail(report, "tap_ring_audit_error", "Could not check the tap rings", details=str(error)[:1500])
+        report["passed"] = not report["failures"]
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
