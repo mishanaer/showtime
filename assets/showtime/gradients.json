@@ -1,55 +1,56 @@
 {
   "schema_version": 1,
-  "source": "showtime",
+  "source": "showtime background palettes by mishanaer",
+  "note": "Set background.palette in a run-specific profile.",
   "gradients": [
     {
       "id": "sage",
       "label": "Sage",
       "palette": [
-        "#c8dacd",
-        "#aec5b1",
-        "#e1e4cb",
-        "#b2c8bd"
+        "#dbddbb",
+        "#6ba587",
+        "#d5d88d",
+        "#88b884"
       ]
     },
     {
       "id": "vivid",
       "label": "Vivid",
       "palette": [
-        "#89b4ee",
-        "#c3a5f2",
-        "#cebfee",
-        "#99cfde"
+        "#598bf6",
+        "#7a5eef",
+        "#d67cff",
+        "#f38b58"
       ]
     },
     {
       "id": "graphite",
       "label": "Graphite",
       "palette": [
-        "#252a33",
-        "#31394b",
-        "#202633",
-        "#414654"
+        "#1b2836",
+        "#121a22",
+        "#1b2836",
+        "#121a22"
       ]
     },
     {
       "id": "pastel",
       "label": "Pastel",
       "palette": [
-        "#b4cede",
-        "#dfcee5",
-        "#bfd6d8",
-        "#e3d8e7"
+        "#8dc0eb",
+        "#b9d1ea",
+        "#c6b1ef",
+        "#ebd7ef"
       ]
     },
     {
       "id": "warm",
       "label": "Warm",
       "palette": [
-        "#e8ba9f",
-        "#dcb4bf",
-        "#ead9b1",
-        "#d5aba0"
+        "#eaa36e",
+        "#f0e486",
+        "#f29ebf",
+        "#e8c06e"
       ]
     }
   ]

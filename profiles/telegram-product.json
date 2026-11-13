@@ -52,12 +52,12 @@
   "background": {
     "source": "../assets/showtime/provenance.json",
     "palette": [
-      "#b4cede",
-      "#dfcee5",
-      "#bfd6d8",
-      "#e3d8e7"
+      "#8dc0eb",
+      "#b9d1ea",
+      "#c6b1ef",
+      "#ebd7ef"
     ],
-    "palette_note": "showtime pastel",
+    "palette_note": "showtime Pastel. Starting configuration; choose a palette from assets/showtime/gradients.json for each new video.",
     "id": "pastel"
   },
   "tap": {
@@ -81,7 +81,7 @@
       195,
       238
     ],
-    "tint_note": "Tint for the bundled procedural contact ring.",
+    "tint_note": "Tint for the bundled After Effects tap ring, calibrated on a light app background; native alpha and timing are preserved.",
     "sequence": "../assets/tap/native/tap_%05d.png"
   },
   "comparison": {
@@ -92,7 +92,7 @@
     ]
   },
   "notes": [
-    "Schematic frame sizes follow the configured device geometry.",
+    "Keep the full native viewport; crop the composed phone at the canvas boundary.",
     "Only application text is visible in product videos."
   ],
   "path_base": "config",

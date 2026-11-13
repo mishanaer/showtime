@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "source": "showtime schematic frames",
+  "source": "showtime phone mockups by mishanaer",
+  "note": "Paths are relative to this catalog. Copy device fields into the run profile with resolved asset paths. Model names identify the mockup; simulator availability must be verified separately.",
   "phones": [
     {
       "id": "iphone-18-pro-silver",
@@ -21,7 +22,7 @@
         0.09,
         0.042
       ],
-      "sha256": "93fb49907b44d0ca600cb87a93219f97b6a27a42977b0681f0d2c2ac4ad5f25b"
+      "sha256": "58e2ab0318adbf6dc5bed2e234383ed2bb2fa257ce0c93cea20a86c595fb5f16"
     },
     {
       "id": "iphone-18-pro-black",
@@ -42,7 +43,7 @@
         0.09,
         0.042
       ],
-      "sha256": "310eb0fda4c9c49640506c685c60ddf830419ca342a098aece87f8fd7d1bb25f"
+      "sha256": "cb7b20a551c4fd63e794e1dd08ab0096816a12e72d38503f36a242550f07264c"
     },
     {
       "id": "iphone-18-pro-burgundy",
@@ -63,7 +64,7 @@
         0.09,
         0.042
       ],
-      "sha256": "830e3d14520aa9cdcfc29155d1d98eaede792234a25db14ac98943726d1974cf"
+      "sha256": "bdbc629525552ff5c20ad9e7e2197a9ea7ba1a19c0c02430b65be6e4a562be89"
     },
     {
       "id": "iphone-18-pro-glacier",
@@ -84,7 +85,7 @@
         0.09,
         0.042
       ],
-      "sha256": "e6250d6653c38d8f3a2002de2d83c089866335821b915a4f84282678de086061"
+      "sha256": "651a3138214a722dacd2f09529c707c253996bab39c4866bf9ddcc6e8a51def2"
     },
     {
       "id": "iphone-18-pro-max-silver",
@@ -105,7 +106,7 @@
         0.09,
         0.042
       ],
-      "sha256": "562a33925fffda0f6353870893f8181cf3975699fc947fd43f7becaa7340148d"
+      "sha256": "6cb9e72efb88c172710d0388f63f51fad883c86895ee382fb402559c0315343d"
     },
     {
       "id": "iphone-18-pro-max-black",
@@ -126,7 +127,7 @@
         0.09,
         0.042
       ],
-      "sha256": "b47ccaf2aae36488405446e710f6dc4224979fd101871bc76f3bba12cfb970e1"
+      "sha256": "13fc8a8f0bc612f50c00d073b12aefa87bce1e4618fbdd3aa882438ae171e2be"
     },
     {
       "id": "iphone-18-pro-max-burgundy",
@@ -147,7 +148,7 @@
         0.09,
         0.042
       ],
-      "sha256": "6b826db57b684637c2c99f2b259bc0d865d33a6be9820d133f8f737252877a23"
+      "sha256": "020a07a5e1b3ab5af80bde60e64192e3af1568576811789dd4d339a0d41f0f69"
     },
     {
       "id": "iphone-18-pro-max-glacier",
@@ -168,7 +169,7 @@
         0.09,
         0.042
       ],
-      "sha256": "0b937f78acf2bbcdf71c58f5c8ea7715e2f09f59832126804619aab9fdd2ee29"
+      "sha256": "f6edfdf4f4b84170d79e34b21df4d4b3ab300e738b64d54bdf8297788e32c6af"
     },
     {
       "id": "iphone-17-black",
@@ -189,7 +190,7 @@
         0.09,
         0.042
       ],
-      "sha256": "08dc3577649c4523801ab72b05e1aeee1539bb25b42821ec0572800bd693e5f5"
+      "sha256": "e4ff9509c138f5f8be8943be90b2f0b62d936181c2b2623a5ba2d5dad3b7db20"
     },
     {
       "id": "iphone-17-lavender",
@@ -210,7 +211,7 @@
         0.09,
         0.042
       ],
-      "sha256": "d2dbb275b2a2c010356dda7629a111924d7ab15769be75e2979706e436c97cbd"
+      "sha256": "2452c035df28d66b3705cbe81093f12858db8d24e4b0a2f0a39d85549c5bfc99"
     },
     {
       "id": "iphone-17-mist-blue",
@@ -231,7 +232,7 @@
         0.09,
         0.042
       ],
-      "sha256": "e85090107acab8fb8ffbb74cd99f2d7e10112e759ec1b221ee076a1419950da9"
+      "sha256": "46593bc7a29d8a51e83788faab7b822d6cedc39f21403b5b1f4d976cdaf9f2f7"
     },
     {
       "id": "iphone-17-sage",
@@ -252,7 +253,7 @@
         0.09,
         0.042
       ],
-      "sha256": "05b6a8c7a5f96380b436f215e30030bdbd0aceffe6832d8e11a9e96b3a9148df"
+      "sha256": "8d3e881d0248c061faa285231f0683613485c908452862aa90b15d4df520e1c2"
     },
     {
       "id": "iphone-17-white",
@@ -273,7 +274,7 @@
         0.09,
         0.042
       ],
-      "sha256": "2e86eb96a6e98f62b9ac4a486e03a3f564fbb081dbafb22c7ea5599083f87fe6"
+      "sha256": "fa956e677d9c9e9ca3ac82bd8f46c2aa7035046cb06cfc04e5d52f4f326fb9a7"
     },
     {
       "id": "iphone-17-pro-silver",
@@ -294,7 +295,7 @@
         0.09,
         0.042
       ],
-      "sha256": "40af42a17fe4561c37bd2628c8c888d45fbe4ed2ae6e122f09a08b79116b64f8"
+      "sha256": "5ea0653406d8291d749f99a6f879d1a145c52df431f0af9244dc3ec342e0b112"
     },
     {
       "id": "iphone-17-pro-cosmic-orange",
@@ -315,7 +316,7 @@
         0.09,
         0.042
       ],
-      "sha256": "15d248702f52f384b0f56e1a1ff6892cd5c0afb8ccf06dbb93cffecc73e770e2"
+      "sha256": "78bc3a90fdacc44e8edfa9173399a836358688d99da563cf3348a55fe4e49e51"
     },
     {
       "id": "iphone-17-pro-deep-blue",
@@ -336,7 +337,7 @@
         0.09,
         0.042
       ],
-      "sha256": "241faa582367c6f4ac592242bbcfbb7ca79a086218159dc24a0a1c885ed6ae37"
+      "sha256": "c0f8d4713a322e598f99a7bfbf8c2cb958a5f41acd704be48fd9665fbaf39cd0"
     },
     {
       "id": "iphone-17-pro-max-silver",
@@ -357,7 +358,7 @@
         0.09,
         0.042
       ],
-      "sha256": "8e6de7d11b33f909f58a7161d37162926fd14e22375318bc839d11015f913b1d"
+      "sha256": "3872abe38941fe6e57a227e76512185f4d555732341f77495cce2d5978a46d26"
     },
     {
       "id": "iphone-17-pro-max-cosmic-orange",
@@ -378,7 +379,7 @@
         0.09,
         0.042
       ],
-      "sha256": "07ff51e7400cd972eb270e16e0896e49f216818b679ae32b7672f76282374b4c"
+      "sha256": "4c4d8ed48e2102000e30afb2b85b68334cd6a0e7dfe107243cd3cd54d1be26c9"
     },
     {
       "id": "iphone-17-pro-max-deep-blue",
@@ -399,7 +400,7 @@
         0.09,
         0.042
       ],
-      "sha256": "6931b679864abf8779c46ba3abb6130f52d7a54270e130a0e0c8d7bffbc8763e"
+      "sha256": "807cf3e6175e77cea8fba6952d295fe1b9199c8133d2236a8e17f318eaf65fa8"
     }
   ]
 }
