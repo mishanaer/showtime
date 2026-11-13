@@ -182,3 +182,16 @@ class ExportProfileTests(unittest.TestCase):
         changed = self.variant(lambda profile: profile["tap"].update(tint_rgb=[255, 255, 255]))
         with self.assertRaisesRegex(ValueError, "predates export-only profile changes"):
             compositor.check_export_profile(review, changed)
+
+
+class CaptureLengthTests(unittest.TestCase):
+    def test_capture_length_is_the_picture_not_a_longer_audio_track(self):
+        import shutil, subprocess
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg required")
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "capture.mp4"
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x64:rate=60:duration=1",
+                            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono", "-t", "2", "-map", "0:v", "-map", "1:a",
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)], check=True)
+            self.assertAlmostEqual(compositor.video_info(path)[2], 1.0, places=2)

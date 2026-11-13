@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Check decoded 60 Hz cadence on exported videos.
+"""Check exported videos: 60 Hz cadence, delivery format and basic content.
 
-audit_delivery also checks final duration. Cadence alone cannot establish that
-each image is distinct or that the captured application animated smoothly.
+audit_delivery also checks the final duration, the delivery format (silent
+H.264 4:2:0, square pixels, upright, starting at zero) and that the picture is
+neither blank nor static. With a render report it checks that every tap ring
+shows. These checks cannot establish that the app animated smoothly or that a
+ring sits on the right control.
 """
 
 import argparse
@@ -12,6 +15,9 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+
+import numpy as np
+
 from media_io import save_json
 
 
@@ -266,6 +272,110 @@ def audit_delivery(path):
     stream = report.get("stream", {})
     if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
         _fail(report, "delivery_dimensions", "The final video must be 1920 × 1920")
+    _audit_media(path, report)
+    report["passed"] = not report["failures"]
+    return report
+
+
+def _audit_media(path, report):
+    try:
+        _audit_format(path, report)
+        _audit_content(path, report)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        _fail(report, "content_audit_error", "Could not check the video content", details=str(error)[:1500])
+
+
+CONTENT_SIZE = 64  # decoded thumbnail edge for content checks
+BLANK_RANGE = 8  # luma levels; a real app screen spans far more
+RING_MIN_DIFFERENCE = 2.0  # mean absolute luma change inside the ring at contact
+
+
+def _probe_streams(path):
+    data = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)],
+                                     check=True, capture_output=True, text=True, timeout=180).stdout)
+    return data.get("streams", [])
+
+
+def _audit_format(path, report):
+    """The delivery format: silent H.264 4:2:0, square pixels, upright, starting at zero."""
+    streams = _probe_streams(path)
+    video = [s for s in streams if s.get("codec_type") == "video"]
+    others = [s.get("codec_type") for s in streams if s.get("codec_type") != "video"]
+    report["delivery_format"] = {"codec": None, "pix_fmt": None, "extra_streams": others}
+    if not video:
+        return
+    stream = video[0]
+    report["delivery_format"].update(codec=stream.get("codec_name"), pix_fmt=stream.get("pix_fmt"),
+                                     sample_aspect_ratio=stream.get("sample_aspect_ratio"))
+    if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p":
+        _fail(report, "delivery_codec", "The final video must be H.264 with yuv420p pixels",
+              codec=stream.get("codec_name"), pix_fmt=stream.get("pix_fmt"))
+    if stream.get("sample_aspect_ratio") not in (None, "1:1", "0:1", "N/A"):
+        _fail(report, "delivery_pixel_aspect", "The final video must use square pixels",
+              sample_aspect_ratio=stream.get("sample_aspect_ratio"))
+    rotation = [d.get("rotation") for d in stream.get("side_data_list", []) if d.get("rotation")]
+    if rotation or stream.get("tags", {}).get("rotate") not in (None, "0"):
+        _fail(report, "delivery_rotation", "The final video must not carry rotation metadata")
+    if others:
+        _fail(report, "delivery_extra_streams", "The final video must contain only the video stream", streams=others)
+    start = stream.get("start_time")
+    if start not in (None, "N/A") and abs(float(start)) > float(FRAME_PERIOD) / 2:
+        _fail(report, "delivery_start_time", "The final video must start at zero", start_time=start)
+
+
+def _decode_gray(path, size=CONTENT_SIZE):
+    command = ["ffmpeg", "-v", "error", "-i", str(path),
+               "-vf", f"scale={size}:{size}:flags=area,format=gray", "-f", "rawvideo", "-"]
+    raw = subprocess.run(command, check=True, capture_output=True, timeout=600).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, size, size).astype(np.int16)
+
+
+def _audit_content(path, report):
+    """Catch a blank picture or a video in which nothing ever changes."""
+    frames = _decode_gray(path)
+    if not len(frames):
+        return
+    changes = np.abs(np.diff(frames, axis=0)).max(axis=(1, 2)) if len(frames) > 1 else np.zeros(0)
+    report["content"] = {"luma_range": int(frames.max() - frames.min()),
+                         "changing_frames": int((changes > 0).sum())}
+    if report["content"]["luma_range"] < BLANK_RANGE:
+        _fail(report, "content_blank", "The final video shows no picture")
+    elif not report["content"]["changing_frames"]:
+        _fail(report, "content_static", "Nothing changes in the final video")
+
+
+def audit_tap_rings(path, events, ring_diameter, report):
+    """Each tap ring must change the picture at its contact frame.
+
+    Compares the ring's area at the contact frame with the first frame after the
+    ring has finished. A missing or invisible ring leaves that area unchanged
+    unless the app itself changes there, so this catches absence, not position.
+    """
+    results = []
+    for event in events:
+        contact, after = event["anchor_output_frame"], event["tap_end_frame"] + 1
+        x, y = event["canvas_point"]
+        radius = ring_diameter / 2
+        box = [max(0, round(x - radius)), max(0, round(y - radius)),
+               min(1920, round(x + radius)), min(1920, round(y + radius))]
+        crop = f"crop={box[2]-box[0]}:{box[3]-box[1]}:{box[0]}:{box[1]}"
+        command = ["ffmpeg", "-v", "error", "-i", str(path), "-vf",
+                   f"select=eq(n\\,{contact})+eq(n\\,{after}),format=gray,{crop}",
+                   "-vsync", "0", "-f", "rawvideo", "-"]
+        raw = subprocess.run(command, check=True, capture_output=True, timeout=600).stdout
+        height, width = box[3] - box[1], box[2] - box[0]
+        pair = np.frombuffer(raw, np.uint8).astype(np.int16)
+        if pair.size != 2 * width * height:
+            _fail(report, "tap_ring_frames_missing", "The tap ring frames are outside the video", event=event.get("id"))
+            continue
+        pair = pair.reshape(2, height, width)
+        difference = float(np.abs(pair[0] - pair[1]).mean())
+        results.append({"id": event.get("id"), "contact_frame": contact, "compared_frame": after,
+                        "mean_difference": round(difference, 2)})
+        if difference < RING_MIN_DIFFERENCE:
+            _fail(report, "tap_ring_invisible", "A tap ring does not show at its contact frame",
+                  event=event.get("id"), mean_difference=round(difference, 2))
+    report["tap_rings"] = results
     report["passed"] = not report["failures"]
     return report
 
@@ -276,11 +386,17 @@ def main():
     parser.add_argument("--report", type=Path)
     parser.add_argument("--cadence-only", action="store_true",
                         help="Check frame cadence only for comparisons and technical previews")
+    parser.add_argument("--render-report", type=Path,
+                        help="compose_pilot render report; also checks that every tap ring shows")
     args = parser.parse_args()
     if args.report and (args.render.resolve() == args.report.resolve() or
                         (args.report.exists() and args.render.exists() and args.report.samefile(args.render))):
         parser.error("The report path points to the video. Choose a separate JSON file.")
     report = (audit_render if args.cadence_only else audit_delivery)(args.render)
+    if args.render_report and not args.cadence_only:
+        render = json.loads(args.render_report.read_text())
+        ring = render["tap"]["width"] * 750 / 1080
+        audit_tap_rings(args.render, render.get("events", []), ring, report)
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)

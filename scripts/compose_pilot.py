@@ -27,7 +27,7 @@ import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 from media_io import sha256, save_json, production_review, file_lock
 from gesture_timing import gesture_frame_map, write_derived_sequence
-from render_quality import audit_render, audit_delivery, delivery_frame_count, RenderQualityError
+from render_quality import audit_render, audit_delivery, audit_tap_rings, delivery_frame_count, RenderQualityError
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "profiles/telegram-product.json"
@@ -101,9 +101,10 @@ def probe(path):
 
 
 def video_info(path):
+    """Size and the video stream's own length; an audio track may outlast the picture."""
     metadata = probe(path)
     stream = next(s for s in metadata["streams"] if s["codec_type"] == "video")
-    return stream["width"], stream["height"], float(metadata["format"]["duration"])
+    return stream["width"], stream["height"], float(stream.get("duration") or metadata["format"]["duration"])
 
 
 PRODUCT_LAYOUTS = ("crop-top", "crop-bottom", "full")
@@ -350,7 +351,8 @@ def render(args, config, directory):
     validate_editorial_policy(config)
     source_w, source_h, source_duration = video_info(args.capture)
     duration = args.duration if args.duration is not None else source_duration - args.capture_start
-    if duration <= 0 or args.capture_start < 0 or args.capture_start+duration > source_duration+0.1:
+    # Half a frame of tolerance: anything longer would be filled by freezing the last frame.
+    if duration <= 0 or args.capture_start < 0 or args.capture_start+duration > source_duration+1/120:
         raise ValueError("Capture trim must be inside the actual recording")
     fps = config["canvas"]["fps"]
     if fps != 60:
@@ -512,6 +514,8 @@ def render(args, config, directory):
         candidate = Path(staging) / output.name
         run(inputs+["-filter_complex_threads", "2", "-filter_complex", ";".join(filters), "-map", "[out]", "-an", "-t", str(duration), "-frames:v", str(expected_frames), "-r", str(fps), "-c:v", "libx264", "-preset", args.preset, "-crf", str(args.crf), "-movflags", "+faststart", str(candidate)])
         quality = audit_delivery(candidate)
+        if quality["passed"] and event_report:
+            audit_tap_rings(candidate, event_report, tap_width * 750 / 1080, quality)
         if not quality["passed"]:
             raise RenderQualityError(quality)
         if quality["decoded_frame_count"] != expected_frames:

@@ -32,7 +32,12 @@ def probe_fixture(fps=60, count=60, offset=0):
 
 
 class RenderQualityTests(unittest.TestCase):
+    """Timing and duration from mocked ffprobe; media checks are tested on real files below."""
+
     def setUp(self):
+        media = mock.patch.object(QUALITY, "_audit_media")
+        media.start()
+        self.addCleanup(media.stop)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.path = Path(temporary.name)/"arbitrary-final-name.mov"
@@ -215,3 +220,63 @@ class RenderQualityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(__import__("shutil").which("ffmpeg"), "ffmpeg required")
+class MediaChecksTests(unittest.TestCase):
+    """Delivery format, blank/static content and tap rings on real encoded files."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+
+    def encode(self, name, source, *options, audio=False):
+        path = self.root / name
+        command = ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", source]
+        if audio:
+            command += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono", "-shortest"]
+        command += [*options, str(path)]
+        subprocess.run(command, check=True)
+        return path
+
+    def media(self, path):
+        report = {"failures": []}
+        QUALITY._audit_media(path, report)
+        return report, {failure["code"] for failure in report["failures"]}
+
+    def test_moving_h264_passes(self):
+        path = self.encode("ok.mp4", "testsrc2=size=128x128:rate=60:duration=1", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        report, codes = self.media(path)
+        self.assertEqual(codes, set())
+        self.assertGreater(report["content"]["changing_frames"], 0)
+
+    def test_blank_and_static_pictures_fail(self):
+        black = self.encode("black.mp4", "color=black:size=128x128:rate=60:duration=1", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        static = self.encode("static.mp4", "color=gray:size=128x128:rate=60:duration=1",
+                             "-vf", "drawbox=x=10:y=10:w=50:h=50:color=white:t=fill", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        self.assertIn("content_blank", self.media(black)[1])
+        self.assertIn("content_static", self.media(static)[1])
+
+    def test_wrong_delivery_format_fails(self):
+        source = "testsrc2=size=128x128:rate=60:duration=1"
+        cases = {
+            "delivery_codec": self.encode("444.mp4", source, "-pix_fmt", "yuv444p", "-c:v", "libx264"),
+            "delivery_pixel_aspect": self.encode("sar.mp4", source, "-vf", "setsar=2", "-pix_fmt", "yuv420p", "-c:v", "libx264"),
+            "delivery_extra_streams": self.encode("audio.mp4", source, "-pix_fmt", "yuv420p", "-c:v", "libx264", audio=True),
+            "delivery_start_time": self.encode("late.mp4", source, "-output_ts_offset", "5", "-pix_fmt", "yuv420p", "-c:v", "libx264"),
+        }
+        for code, path in cases.items():
+            with self.subTest(code=code):
+                self.assertIn(code, self.media(path)[1])
+
+    def test_missing_tap_ring_fails(self):
+        # A gray screen where a 40 px "ring" shows only around frame 25.
+        path = self.encode("ring.mp4", "color=gray:size=1920x1920:rate=60:duration=1",
+                           "-vf", "drawbox=x=480:y=480:w=40:h=40:color=white:t=fill:enable='between(n,15,34)'",
+                           "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast")
+        event = {"id": "tap", "anchor_output_frame": 25, "tap_end_frame": 40}
+        shown = QUALITY.audit_tap_rings(path, [dict(event, canvas_point=[500, 500])], 60, {"failures": []})
+        self.assertTrue(shown["passed"])
+        missing = QUALITY.audit_tap_rings(path, [dict(event, canvas_point=[1400, 1400])], 60, {"failures": []})
+        self.assertEqual([f["code"] for f in missing["failures"]], ["tap_ring_invisible"])

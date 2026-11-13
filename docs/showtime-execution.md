@@ -78,7 +78,7 @@ Outputs: `edited-capture.mp4`, `events.json`, `edit-timeline.json`, `edit-review
 
 ```bash
 python3 "$SHOWTIME/scripts/compose_pilot.py" --config "$RUN_DIR/profile.json" --work-dir "$RUN_DIR/render-work" render --capture "$RUN_DIR/edit/edited-capture.mp4" --events "$RUN_DIR/edit/events.json" --output "$RUN_DIR/showtime.mp4"
-python3 "$SHOWTIME/scripts/render_quality.py" "$RUN_DIR/showtime.mp4" --report "$RUN_DIR/render-quality.json"
+python3 "$SHOWTIME/scripts/render_quality.py" "$RUN_DIR/showtime.mp4" --render-report "$RUN_DIR/showtime.render.json" --report "$RUN_DIR/render-quality.json"
 ```
 
 Use the run's existing config for ongoing work. Always supply `--work-dir` inside the run. After a take, the run profile may change the background, the tap appearance and the phone color without a new recording; the render report records the change under `profile_check`. The layout, the canvas and the phone model (its size and screen insets) stay bound to the prepared materials: changing them requires new preparation evidence and a new take. The product profile supplies the mockup, background and ready-to-use tap frames; no After Effects export is needed.
