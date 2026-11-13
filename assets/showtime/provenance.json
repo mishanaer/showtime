@@ -1,82 +1,248 @@
 {
   "schema_version": 1,
-  "source": "Drawn by scripts/package_public.py",
+  "source": "Original showtime assets by mishanaer: phone mockups, background palettes and the After Effects tap ring export.",
   "assets": [
     {
       "file": "phones/iphone-17-black.png",
-      "sha256": "08dc3577649c4523801ab72b05e1aeee1539bb25b42821ec0572800bd693e5f5"
+      "sha256": "e4ff9509c138f5f8be8943be90b2f0b62d936181c2b2623a5ba2d5dad3b7db20"
     },
     {
       "file": "phones/iphone-17-lavender.png",
-      "sha256": "d2dbb275b2a2c010356dda7629a111924d7ab15769be75e2979706e436c97cbd"
+      "sha256": "2452c035df28d66b3705cbe81093f12858db8d24e4b0a2f0a39d85549c5bfc99"
     },
     {
       "file": "phones/iphone-17-mist-blue.png",
-      "sha256": "e85090107acab8fb8ffbb74cd99f2d7e10112e759ec1b221ee076a1419950da9"
+      "sha256": "46593bc7a29d8a51e83788faab7b822d6cedc39f21403b5b1f4d976cdaf9f2f7"
     },
     {
       "file": "phones/iphone-17-pro-cosmic-orange.png",
-      "sha256": "15d248702f52f384b0f56e1a1ff6892cd5c0afb8ccf06dbb93cffecc73e770e2"
+      "sha256": "78bc3a90fdacc44e8edfa9173399a836358688d99da563cf3348a55fe4e49e51"
     },
     {
       "file": "phones/iphone-17-pro-deep-blue.png",
-      "sha256": "241faa582367c6f4ac592242bbcfbb7ca79a086218159dc24a0a1c885ed6ae37"
+      "sha256": "c0f8d4713a322e598f99a7bfbf8c2cb958a5f41acd704be48fd9665fbaf39cd0"
     },
     {
       "file": "phones/iphone-17-pro-max-cosmic-orange.png",
-      "sha256": "07ff51e7400cd972eb270e16e0896e49f216818b679ae32b7672f76282374b4c"
+      "sha256": "4c4d8ed48e2102000e30afb2b85b68334cd6a0e7dfe107243cd3cd54d1be26c9"
     },
     {
       "file": "phones/iphone-17-pro-max-deep-blue.png",
-      "sha256": "6931b679864abf8779c46ba3abb6130f52d7a54270e130a0e0c8d7bffbc8763e"
+      "sha256": "807cf3e6175e77cea8fba6952d295fe1b9199c8133d2236a8e17f318eaf65fa8"
     },
     {
       "file": "phones/iphone-17-pro-max-silver.png",
-      "sha256": "8e6de7d11b33f909f58a7161d37162926fd14e22375318bc839d11015f913b1d"
+      "sha256": "3872abe38941fe6e57a227e76512185f4d555732341f77495cce2d5978a46d26"
     },
     {
       "file": "phones/iphone-17-pro-silver.png",
-      "sha256": "40af42a17fe4561c37bd2628c8c888d45fbe4ed2ae6e122f09a08b79116b64f8"
+      "sha256": "5ea0653406d8291d749f99a6f879d1a145c52df431f0af9244dc3ec342e0b112"
     },
     {
       "file": "phones/iphone-17-sage.png",
-      "sha256": "05b6a8c7a5f96380b436f215e30030bdbd0aceffe6832d8e11a9e96b3a9148df"
+      "sha256": "8d3e881d0248c061faa285231f0683613485c908452862aa90b15d4df520e1c2"
     },
     {
       "file": "phones/iphone-17-white.png",
-      "sha256": "2e86eb96a6e98f62b9ac4a486e03a3f564fbb081dbafb22c7ea5599083f87fe6"
+      "sha256": "fa956e677d9c9e9ca3ac82bd8f46c2aa7035046cb06cfc04e5d52f4f326fb9a7"
     },
     {
       "file": "phones/iphone-18-pro-black.png",
-      "sha256": "310eb0fda4c9c49640506c685c60ddf830419ca342a098aece87f8fd7d1bb25f"
+      "sha256": "cb7b20a551c4fd63e794e1dd08ab0096816a12e72d38503f36a242550f07264c"
     },
     {
       "file": "phones/iphone-18-pro-burgundy.png",
-      "sha256": "830e3d14520aa9cdcfc29155d1d98eaede792234a25db14ac98943726d1974cf"
+      "sha256": "bdbc629525552ff5c20ad9e7e2197a9ea7ba1a19c0c02430b65be6e4a562be89"
     },
     {
       "file": "phones/iphone-18-pro-glacier.png",
-      "sha256": "e6250d6653c38d8f3a2002de2d83c089866335821b915a4f84282678de086061"
+      "sha256": "651a3138214a722dacd2f09529c707c253996bab39c4866bf9ddcc6e8a51def2"
     },
     {
       "file": "phones/iphone-18-pro-max-black.png",
-      "sha256": "b47ccaf2aae36488405446e710f6dc4224979fd101871bc76f3bba12cfb970e1"
+      "sha256": "13fc8a8f0bc612f50c00d073b12aefa87bce1e4618fbdd3aa882438ae171e2be"
     },
     {
       "file": "phones/iphone-18-pro-max-burgundy.png",
-      "sha256": "6b826db57b684637c2c99f2b259bc0d865d33a6be9820d133f8f737252877a23"
+      "sha256": "020a07a5e1b3ab5af80bde60e64192e3af1568576811789dd4d339a0d41f0f69"
     },
     {
       "file": "phones/iphone-18-pro-max-glacier.png",
-      "sha256": "0b937f78acf2bbcdf71c58f5c8ea7715e2f09f59832126804619aab9fdd2ee29"
+      "sha256": "f6edfdf4f4b84170d79e34b21df4d4b3ab300e738b64d54bdf8297788e32c6af"
     },
     {
       "file": "phones/iphone-18-pro-max-silver.png",
-      "sha256": "562a33925fffda0f6353870893f8181cf3975699fc947fd43f7becaa7340148d"
+      "sha256": "6cb9e72efb88c172710d0388f63f51fad883c86895ee382fb402559c0315343d"
     },
     {
       "file": "phones/iphone-18-pro-silver.png",
-      "sha256": "93fb49907b44d0ca600cb87a93219f97b6a27a42977b0681f0d2c2ac4ad5f25b"
+      "sha256": "58e2ab0318adbf6dc5bed2e234383ed2bb2fa257ce0c93cea20a86c595fb5f16"
+    }
+  ],
+  "tap": [
+    {
+      "file": "assets/tap/native/tap_00000.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00001.png",
+      "sha256": "178d7bda54cbde8c95f36c1366c4ed613c663c5633f2e113dc53dc64e117dd5b"
+    },
+    {
+      "file": "assets/tap/native/tap_00002.png",
+      "sha256": "49a897d027abad26e783f3a152b257863d1e56a11d896a51be104e09595e0ab9"
+    },
+    {
+      "file": "assets/tap/native/tap_00003.png",
+      "sha256": "7b88fafb7a256e7b3ae633c27c755e3fbf8087499e8e38dd8d8074204cfaa72e"
+    },
+    {
+      "file": "assets/tap/native/tap_00004.png",
+      "sha256": "0d716984fe06ae84fbaac4bb39cd53ebb154b420a9a3dfda8eddab6da3444ac6"
+    },
+    {
+      "file": "assets/tap/native/tap_00005.png",
+      "sha256": "4cc389feb8df7b7e38fc7f8019841a13bf789fc4dc8b666cda5e6db88cfa97b5"
+    },
+    {
+      "file": "assets/tap/native/tap_00006.png",
+      "sha256": "066eb99090af3636d25f56b90be2ce652fc6034054d39483863571118a8e52a3"
+    },
+    {
+      "file": "assets/tap/native/tap_00007.png",
+      "sha256": "3129bf99ded4498e2e284b11480e5cf41c91b86deec3e24b461e438c9256d6d3"
+    },
+    {
+      "file": "assets/tap/native/tap_00008.png",
+      "sha256": "5130ce0de0eb41b45da87151e5fd0cc78e889951841b7c3b1d8606052715a59e"
+    },
+    {
+      "file": "assets/tap/native/tap_00009.png",
+      "sha256": "1212103c51724be2049fc05cf7738157b2775fa99d4a48e1dbd4efe1e8eabd0e"
+    },
+    {
+      "file": "assets/tap/native/tap_00010.png",
+      "sha256": "19d6f01b5e9bf95d650fbaa8c45c884284ea1a2b63e2152224d9afb3c17b0b6e"
+    },
+    {
+      "file": "assets/tap/native/tap_00011.png",
+      "sha256": "1d21f1d8ff5d6acb7961d8184cef75c84583be096bc1c278a49794cb76170bcf"
+    },
+    {
+      "file": "assets/tap/native/tap_00012.png",
+      "sha256": "d8d0e90244883fe907286f9ecf84707580eb5707e067ee723936aedc71b50a3f"
+    },
+    {
+      "file": "assets/tap/native/tap_00013.png",
+      "sha256": "ae827c4f8eafffc1a4bb063fd64458632b525a53a24d06b4360218fa7e52338c"
+    },
+    {
+      "file": "assets/tap/native/tap_00014.png",
+      "sha256": "89181dbefc61c6a04fad034401c33b88fbb84fbbf9baf8486d314a69a95e0ed3"
+    },
+    {
+      "file": "assets/tap/native/tap_00015.png",
+      "sha256": "716d0ed371e4386ad6df0ffa60c23b1461a9efc6a4660d4c342fb36f12f70f44"
+    },
+    {
+      "file": "assets/tap/native/tap_00016.png",
+      "sha256": "a53996fff4ea6326567dd159d695cfa9b8dfec1e066fa9cb67b71bee603212da"
+    },
+    {
+      "file": "assets/tap/native/tap_00017.png",
+      "sha256": "4c96c8b1a184fae9487f3e0a5cb91ecc3e18b1bd5701e34bf76bf6713d30d7b7"
+    },
+    {
+      "file": "assets/tap/native/tap_00018.png",
+      "sha256": "dc973e3a7f1d6c98c928b1b09d4d79f0b50cf653e88cd39f654e7f50782ac587"
+    },
+    {
+      "file": "assets/tap/native/tap_00019.png",
+      "sha256": "af730bdd6bdf273b09e0ada0aec4c2dc53cb12f3ab46c78cfe25752343fa74fa"
+    },
+    {
+      "file": "assets/tap/native/tap_00020.png",
+      "sha256": "88656e8c18d4dd0145852b2282e2c9b53b24896a32f0c1fa5f62bca9fb482e59"
+    },
+    {
+      "file": "assets/tap/native/tap_00021.png",
+      "sha256": "b4363a2d9354fd1578770044741c11820af74ce30254e0b22a343b5d1154dd86"
+    },
+    {
+      "file": "assets/tap/native/tap_00022.png",
+      "sha256": "d3f8080f57734143aa48bea7491e29a460fcdf814a3e2b191865ed530fa7e6ca"
+    },
+    {
+      "file": "assets/tap/native/tap_00023.png",
+      "sha256": "9e0266964633604536254c91b79e25b3b309447521e5c42e3a675eb0bcd46735"
+    },
+    {
+      "file": "assets/tap/native/tap_00024.png",
+      "sha256": "4e0c3ab506e567a49011dc22267d7185763a7b3b6977620ecd93acc4667d810c"
+    },
+    {
+      "file": "assets/tap/native/tap_00025.png",
+      "sha256": "fb35afeee5549398cd41defb8ed3a94f49582ffb5c1eebbfb73135d51a9f6b46"
+    },
+    {
+      "file": "assets/tap/native/tap_00026.png",
+      "sha256": "96e0d32ad0a331e53f5205966e0a0bdeea5739d74b9eed366010c58d1262ef4c"
+    },
+    {
+      "file": "assets/tap/native/tap_00027.png",
+      "sha256": "8c8af306eee1efb4f7620b6fb49d080c4add8e96122074db57b847637301f7f1"
+    },
+    {
+      "file": "assets/tap/native/tap_00028.png",
+      "sha256": "0f40749625976e3ca8e5a547853d8936d34660c57c1198a50be63d3b88f2080f"
+    },
+    {
+      "file": "assets/tap/native/tap_00029.png",
+      "sha256": "f73933fea6fdc98792e566d2a228956650cda1cb115355c5de5bfe10b3044b80"
+    },
+    {
+      "file": "assets/tap/native/tap_00030.png",
+      "sha256": "5b85e2bd0548b11275dcb497f3976fb6e22b9650529b2f353d9062ef25f95011"
+    },
+    {
+      "file": "assets/tap/native/tap_00031.png",
+      "sha256": "be89e97ecaf3e9ec6606a018068985447f8c3c470692f5a4acfc7a49df2d2c8f"
+    },
+    {
+      "file": "assets/tap/native/tap_00032.png",
+      "sha256": "9fe5294d43689b0cdc70c1a9443d3dd6004a35c93e21929de31a66c1d36aac5a"
+    },
+    {
+      "file": "assets/tap/native/tap_00033.png",
+      "sha256": "6f346c7e80995e8b3a99dbbcd4732f723d2fbafe780f992f6ac2cf7ecc10b0d5"
+    },
+    {
+      "file": "assets/tap/native/tap_00034.png",
+      "sha256": "f22b96fbd2996a87af420063459aadf23ada61e1bf7ac7f4d389466ea134589b"
+    },
+    {
+      "file": "assets/tap/native/tap_00035.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00036.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00037.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00038.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00039.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
+    },
+    {
+      "file": "assets/tap/native/tap_00040.png",
+      "sha256": "34fd171117aa612a440ddfdadf1973db1735c96f1e101e5d2e1360c00e6ccf92"
     }
   ]
 }
