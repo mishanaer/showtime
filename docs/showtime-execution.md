@@ -26,7 +26,7 @@ python3 "$SHOWTIME/scripts/native_action.py" --axe "$AXE_BIN" --clock "$RUN_DIR/
 
 Keep each journal with its own capture clock. Leave at least 25/60 seconds before the first contact for the tap animation's entry. For long presses, send down/up in one touch command and record `contact_start`, `contact_end` and `contact_timing`; command duration is not contact duration. HID timing estimates dispatch, not physical contact.
 
-Set the product profile layout to `crop-top`, `crop-bottom` or `full` before preparing the stage. Both `prepare` and `render` also accept `--layout` after the subcommand. Use the same preset for both.
+Set the run profile layout to `crop-top`, `crop-bottom` or `full` before preparing the stage. To show the phone larger in a crop, set `layout_scale` in the run profile (for example `1.3`) and the same `layout_scale` in the framing entry. Both `prepare` and `render` also accept `--layout` after the subcommand. Use the same preset for both.
 
 For character typing, use `--type type_text --text-file <file>`, omitting `--point` and `--step`. The default rate is 30 characters per second (1/30-second inter-character delay, plus driver overhead). This AXe route accepts printable US ASCII without a trailing newline. Use a verified app-side or other driver for unsupported characters. If hardware input changes the layout, hides a required keyboard or animates keys, use a demo driver to insert one character at a time into the focused native field. Verify the resulting text and check consecutive frames across the entire input for key highlights, popups and rings.
 
@@ -54,7 +54,7 @@ Capture complete transitions, the result's reading interval and the loop return.
 
 ## Edit
 
-Watch the source and create `observations.json`; do not infer UI completion from command timings. To read a frame at a time, seek before the input (`ffmpeg -ss T -i raw.mp4`): simulator recordings can carry broken decode timestamps. The contract in `scripts/scene_timeline.py` is:
+Watch the source and create `observations.json`; do not infer UI completion from command timings. Simulator recordings have variable frame rate: `ffmpeg -ss T` returns the first frame at or after T, while the screen at T still shows the last frame before it. Read frame times with `ffprobe -fflags +igndts -show_entries frame=pts_time`. The contract in `scripts/scene_timeline.py` is:
 
 ```text
 schema_version: 1

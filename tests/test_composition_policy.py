@@ -207,5 +207,19 @@ class CaptureLengthTests(unittest.TestCase):
             self.assertAlmostEqual(compositor.video_info(path)[2], 1.0, places=2)
 
 
+
+class LayoutScaleTests(unittest.TestCase):
+    def test_layout_scale_enlarges_crop_phone_around_the_centre(self):
+        config = compositor.load_config(compositor.DEFAULT_CONFIG)
+        base = compositor.geometry(compositor.use_layout(config, "crop-top"))
+        config["layout_scale"] = 1.3
+        scaled = compositor.geometry(compositor.use_layout(config, "crop-top"))
+        self.assertEqual(scaled["device"][2], round(base["device"][2] * 1.3))
+        self.assertEqual(scaled["device"][0], (1920 - scaled["device"][2]) // 2)
+        self.assertEqual(scaled["device"][1], base["device"][1])
+        self.assertEqual(compositor.geometry(compositor.use_layout(config, "full")),
+                         compositor.geometry(compositor.use_layout({**config, "layout_scale": 1}, "full")))
+
+
 if __name__ == "__main__":
     unittest.main()
