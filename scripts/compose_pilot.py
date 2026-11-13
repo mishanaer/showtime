@@ -120,7 +120,6 @@ def video_info(path):
 
 
 PRODUCT_LAYOUTS = ("crop-top", "crop-bottom", "full")
-SCREEN_BLEED = 2  # canvas pixels of app screen drawn under the bezel
 
 
 def geometry(config):
@@ -138,12 +137,6 @@ def geometry(config):
         "screen": [round(d["left"] + left * factor), round(d["top"] + top * factor), sw, sh],
         "radius": [sw * d["screen_radius_fraction"][0], sh * d["screen_radius_fraction"][1]],
     }
-
-
-def bled_screen(g, bleed=SCREEN_BLEED):
-    """The rectangle and corner radii the app screen is actually drawn with."""
-    sx, sy, sw, sh = g["screen"]
-    return [sx - bleed, sy - bleed, sw + 2*bleed, sh + 2*bleed], [r + bleed for r in g["radius"]]
 
 
 def use_layout(config, name):
@@ -397,10 +390,6 @@ def render(args, config, directory):
         raise ValueError("tap monochrome_rgb must contain three integer channels from 0 to 255")
     anchor = args.tap_anchor_frame if args.tap_anchor_frame is not None else tap["anchor_frame"]
     tap_width = args.tap_width or (round(sw*tap["maximum_diameter_fraction"]/(750/1080)) if tap.get("maximum_diameter_fraction") else tap["width"])
-    # Draw the app screen slightly past the mockup opening. The opaque bezel covers
-    # the excess, so rounding and anti-aliased bezel edges never show background.
-    (sx, sy, sw, sh), bleed_radius = bled_screen(g)
-    rounded_mask((sw, sh), bleed_radius).save(directory / "screen-mask-bleed.png")
     stage_taps = tap.get("overlay_space", "screen") == "stage"
     if tap["fps"] != fps:
         raise ValueError("The tap and delivery frame rates must match to preserve every original frame")
@@ -441,7 +430,7 @@ def render(args, config, directory):
     inputs = ["ffmpeg", "-hide_banner", "-y", "-loglevel", "warning",
               "-i", args.capture,
               "-loop", "1", "-framerate", str(fps), "-i", str(directory/"background.png"),
-              "-loop", "1", "-framerate", str(fps), "-i", str(directory/"screen-mask-bleed.png"),
+              "-loop", "1", "-framerate", str(fps), "-i", str(directory/"screen-mask.png"),
               "-loop", "1", "-framerate", str(fps), "-i", str(directory/"device-layer.png")]
     # Use explicit integer scale/crop for both video pixels and gesture geometry.
     scale = max(sw/source_w, sh/source_h)
@@ -545,7 +534,7 @@ def render(args, config, directory):
         if quality["decoded_frame_count"] != expected_frames:
             raise ValueError("The render is missing planned frames")
         quality["output"] = str(output.resolve())
-        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"screen_bleed":SCREEN_BLEED,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"start_number":tap["start_number"],"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
+        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"start_number":tap["start_number"],"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
         report["layout"] = config.get("layout")
         report["quality"] = quality
         report["tap"]["tint_rgb"] = tap.get("tint_rgb", monochrome_rgb)

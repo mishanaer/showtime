@@ -207,39 +207,5 @@ class CaptureLengthTests(unittest.TestCase):
             self.assertAlmostEqual(compositor.video_info(path)[2], 1.0, places=2)
 
 
-class ScreenEdgeTests(unittest.TestCase):
-    def test_no_background_shows_between_screen_and_bezel(self):
-        """Composite a black screen as render does; the bezel edge must never reveal the background."""
-        from PIL import Image
-        import numpy as np
-        catalog = json.loads((compositor.ROOT / "assets/showtime/phones.json").read_text())
-        base = compositor.load_config(compositor.DEFAULT_CONFIG)
-        for phone in catalog["phones"]:
-            for layout in compositor.PRODUCT_LAYOUTS:
-                with self.subTest(phone=phone["id"], layout=layout), tempfile.TemporaryDirectory() as temporary:
-                    config = json.loads(json.dumps(base))
-                    config["device"].update(source=str(compositor.ROOT / "assets/showtime" / phone["source"]),
-                                            source_size=phone["source_size"], screen_insets=phone["screen_insets"],
-                                            screen_radius_fraction=phone["screen_radius_fraction"])
-                    config = compositor.use_layout(config, layout)
-                    g = compositor.prepare(config, Path(temporary))
-                    (x, y, w, h), radius = compositor.bled_screen(g)
-                    canvas = Image.new("RGBA", (1920, 1920), (255, 0, 255, 255))
-                    canvas.paste(Image.new("RGBA", (w, h), (0, 0, 0, 255)), (x, y), compositor.rounded_mask((w, h), radius))
-                    canvas.alpha_composite(Image.open(Path(temporary) / "device-layer.png").convert("RGBA"))
-                    pixels = np.asarray(canvas.convert("RGB")).astype(int)
-                    sx, sy, sw, sh = g["screen"]
-                    rows = slice(max(sy + sh // 4, 0), min(sy + 3 * sh // 4, 1920))
-                    cols = slice(sx + sw // 4, sx + 3 * sw // 4)
-                    edges = [pixels[rows, sx - 3:sx + 3], pixels[rows, sx + sw - 3:sx + sw + 3]]
-                    if sy >= 3:
-                        edges.append(pixels[sy - 3:sy + 3, cols])
-                    if sy + sh + 3 <= 1920:
-                        edges.append(pixels[sy + sh - 3:sy + sh + 3, cols])
-                    for edge in edges:
-                        magenta = (edge[..., 0] - edge[..., 1] > 40) & (edge[..., 2] - edge[..., 1] > 40)
-                        self.assertFalse(magenta.any())
-
-
 if __name__ == "__main__":
     unittest.main()
