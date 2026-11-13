@@ -16,6 +16,7 @@ does not infer physical touch timing from command timestamps.
 import argparse
 import copy
 import tempfile
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -27,7 +28,7 @@ import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 from media_io import sha256, save_json, production_review, file_lock
 from gesture_timing import gesture_frame_map, write_derived_sequence
-from render_quality import audit_render, audit_delivery, delivery_frame_count, RenderQualityError
+from render_quality import audit_render, audit_delivery, audit_tap_rings, delivery_frame_count, RenderQualityError
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "profiles/telegram-product.json"
@@ -47,6 +48,47 @@ def load_config(path, layout=None):
                 if parent.get(key):
                     parent[key] = str((path.parent / parent[key]).resolve())
     return use_layout(config, layout)
+
+
+# The only profile fields a take is not bound to: they change how the phone and
+# rings look, not where the recording sits, when rings appear or what is shown.
+EXPORT_ONLY = {"background": None, "name": None, "notes": None,
+               "tap": ("tint_rgb", "tint_note", "sequence"),
+               "device": ("id", "source", "color", "manifest", "sha256")}
+
+
+def bound_profile_sha256(config):
+    """Hash of everything in a resolved profile that a recorded take is bound to.
+
+    Includes the resolved stage geometry, so moving or resizing the phone in any
+    layout counts as a change.
+    """
+    bound = copy.deepcopy(config)
+    for section, fields in EXPORT_ONLY.items():
+        if fields is None:
+            bound.pop(section, None)
+        else:
+            for field in fields:
+                bound.get(section, {}).pop(field, None)
+    bound["stage_geometry"] = geometry(config)
+    return hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def check_export_profile(review, config_path, layout=None):
+    """Return how the export profile relates to the approved one, or raise."""
+    approved = review.get("profile_sha256")
+    if not approved:
+        return None
+    if sha256(config_path) == approved and layout in (None, load_config(config_path)["layout"]):
+        return {"profile": "approved"}
+    bound = review.get("profile_bound_sha256")
+    if bound is None:
+        raise ValueError("Use the approved profile and framing for export (this take predates export-only profile changes)")
+    if bound_profile_sha256(load_config(config_path, layout)) != bound:
+        raise ValueError("After a take only the background, the tap ring color or frames and the phone color may change; "
+                         "record a new take for any other profile change")
+    return {"profile": "changed after the take", "approved_profile_sha256": approved,
+            "export_profile_sha256": sha256(config_path), "bound_fields": "unchanged"}
 
 
 def validate_editorial_policy(config):
@@ -71,9 +113,10 @@ def probe(path):
 
 
 def video_info(path):
+    """Size and the video stream's own length; an audio track may outlast the picture."""
     metadata = probe(path)
     stream = next(s for s in metadata["streams"] if s["codec_type"] == "video")
-    return stream["width"], stream["height"], float(metadata["format"]["duration"])
+    return stream["width"], stream["height"], float(stream.get("duration") or metadata["format"]["duration"])
 
 
 PRODUCT_LAYOUTS = ("crop-top", "crop-bottom", "full")
@@ -320,16 +363,15 @@ def render(args, config, directory):
     validate_editorial_policy(config)
     source_w, source_h, source_duration = video_info(args.capture)
     duration = args.duration if args.duration is not None else source_duration - args.capture_start
-    if duration <= 0 or args.capture_start < 0 or args.capture_start+duration > source_duration+0.1:
+    # Half a frame of tolerance: anything longer would be filled by freezing the last frame.
+    if duration <= 0 or args.capture_start < 0 or args.capture_start+duration > source_duration+1/120:
         raise ValueError("Capture trim must be inside the actual recording")
     fps = config["canvas"]["fps"]
     if fps != 60:
         raise ValueError("The final video must be exactly 60 fps")
     expected_frames = delivery_frame_count(duration)
     review = production_review(args.capture)
-    if review.get("profile_sha256"):
-        if sha256(args.config) != review["profile_sha256"] or getattr(args, "layout", None) not in (None, load_config(args.config)["layout"]):
-            raise ValueError("Use the approved profile and framing for export")
+    profile_check = check_export_profile(review, args.config, getattr(args, "layout", None))
 
     duration = expected_frames / fps
     events, (coord_w, coord_h) = load_events(args.events, (source_w, source_h))
@@ -484,12 +526,15 @@ def render(args, config, directory):
         candidate = Path(staging) / output.name
         run(inputs+["-filter_complex_threads", "2", "-filter_complex", ";".join(filters), "-map", "[out]", "-an", "-t", str(duration), "-frames:v", str(expected_frames), "-r", str(fps), "-c:v", "libx264", "-preset", args.preset, "-crf", str(args.crf), "-movflags", "+faststart", str(candidate)])
         quality = audit_delivery(candidate)
+        if quality["passed"] and event_report:
+            audit_tap_rings(candidate, {"sequence": tap_sequence, "start_number": tap["start_number"], "width": tap_width,
+                                        "frames": expected_frames, "events": event_report}, quality)
         if not quality["passed"]:
             raise RenderQualityError(quality)
         if quality["decoded_frame_count"] != expected_frames:
             raise ValueError("The render is missing planned frames")
         quality["output"] = str(output.resolve())
-        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"tap":{"sequence":tap_sequence,"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
+        report = {"capture":str(Path(args.capture).resolve()),"capture_sha256":sha256(args.capture),"capture_start":args.capture_start,"duration":duration,"output":str(output.resolve()),"geometry":g,"source_size":[source_w,source_h],"scaled_size":[scaled_w,scaled_h],"crop_offset":[crop_x,crop_y],"events":event_report,"profile_check":profile_check,"tap":{"sequence":tap_sequence,"start_number":tap["start_number"],"fps":tap["fps"],"frames":tap["frames"],"width":tap_width,"blur":blur,"timing_stretched":False},"output_probe":probe(candidate)}
         report["layout"] = config.get("layout")
         report["quality"] = quality
         report["tap"]["tint_rgb"] = tap.get("tint_rgb", monochrome_rgb)

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Check decoded 60 Hz cadence on exported videos.
+"""Check exported videos: 60 Hz cadence, delivery format and basic content.
 
-audit_delivery also checks final duration. Cadence alone cannot establish that
-each image is distinct or that the captured application animated smoothly.
+audit_delivery also checks the final duration, the delivery format (silent
+H.264 4:2:0, square pixels, upright, starting at zero) and that the picture is
+neither blank nor static. With a render report it checks that every tap ring
+shows. These checks cannot establish that the app animated smoothly or that a
+ring sits on the right control.
 """
 
 import argparse
@@ -12,6 +15,9 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+
+import numpy as np
+
 from media_io import save_json
 
 
@@ -266,6 +272,142 @@ def audit_delivery(path):
     stream = report.get("stream", {})
     if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
         _fail(report, "delivery_dimensions", "The final video must be 1920 × 1920")
+    _audit_media(path, report)
+    report["passed"] = not report["failures"]
+    return report
+
+
+def _audit_media(path, report):
+    try:
+        _audit_format(path, report)
+        _audit_content(path, report)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        _fail(report, "content_audit_error", "Could not check the video content", details=str(error)[:1500])
+
+
+CONTENT_SIZE = 64  # decoded thumbnail edge for content checks
+BLANK_RANGE = 8  # luma levels; a real app screen spans far more
+RING_MIN_EXPECTED = 3.0  # below this the ring tint barely differs from the screen under it
+RING_MIN_SHARE = 0.35  # share of the expected tint change that must actually show
+
+
+def _probe_streams(path):
+    data = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)],
+                                     check=True, capture_output=True, text=True, timeout=180).stdout)
+    return data.get("streams", [])
+
+
+def _audit_format(path, report):
+    """The delivery format: silent H.264 4:2:0, square pixels, upright, starting at zero."""
+    streams = _probe_streams(path)
+    video = [s for s in streams if s.get("codec_type") == "video"]
+    others = [s.get("codec_type") for s in streams if s.get("codec_type") != "video"]
+    report["delivery_format"] = {"codec": None, "pix_fmt": None, "extra_streams": others}
+    if not video:
+        return
+    stream = video[0]
+    report["delivery_format"].update(codec=stream.get("codec_name"), pix_fmt=stream.get("pix_fmt"),
+                                     sample_aspect_ratio=stream.get("sample_aspect_ratio"))
+    if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p":
+        _fail(report, "delivery_codec", "The final video must be H.264 with yuv420p pixels",
+              codec=stream.get("codec_name"), pix_fmt=stream.get("pix_fmt"))
+    if stream.get("sample_aspect_ratio") not in (None, "1:1", "0:1", "N/A"):
+        _fail(report, "delivery_pixel_aspect", "The final video must use square pixels",
+              sample_aspect_ratio=stream.get("sample_aspect_ratio"))
+    rotation = [d.get("rotation") for d in stream.get("side_data_list", []) if d.get("rotation")]
+    if rotation or stream.get("tags", {}).get("rotate") not in (None, "0"):
+        _fail(report, "delivery_rotation", "The final video must not carry rotation metadata")
+    if others:
+        _fail(report, "delivery_extra_streams", "The final video must contain only the video stream", streams=others)
+    start = stream.get("start_time")
+    if start not in (None, "N/A") and abs(float(start)) > float(FRAME_PERIOD) / 2:
+        _fail(report, "delivery_start_time", "The final video must start at zero", start_time=start)
+
+
+def _decode_gray(path, size=CONTENT_SIZE):
+    command = ["ffmpeg", "-v", "error", "-i", str(path),
+               "-vf", f"scale={size}:{size}:flags=area,format=gray", "-f", "rawvideo", "-"]
+    raw = subprocess.run(command, check=True, capture_output=True, timeout=600).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, size, size).astype(np.int16)
+
+
+def _audit_content(path, report):
+    """Catch a blank picture or a video in which nothing ever changes."""
+    frames = _decode_gray(path)
+    if not len(frames):
+        return
+    changes = np.abs(np.diff(frames, axis=0)).max(axis=(1, 2)) if len(frames) > 1 else np.zeros(0)
+    report["content"] = {"luma_range": int(frames.max() - frames.min()),
+                         "changing_frames": int((changes > 0).sum())}
+    if report["content"]["luma_range"] < BLANK_RANGE:
+        _fail(report, "content_blank", "The final video shows no picture")
+    elif not report["content"]["changing_frames"]:
+        _fail(report, "content_static", "Nothing changes in the final video")
+
+
+def _decode_rgb_crop(path, frame, box):
+    width, height = box[2] - box[0], box[3] - box[1]
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-vf",
+                          f"select=eq(n\\,{frame}),format=rgb24,crop={width}:{height}:{box[0]}:{box[1]}",
+                          "-vsync", "0", "-frames:v", "1", "-f", "rawvideo", "-"],
+                         check=True, capture_output=True, timeout=600).stdout
+    if len(raw) != width * height * 3:
+        return None
+    return np.frombuffer(raw, np.uint8).reshape(height, width, 3).astype(np.float32)
+
+
+def audit_tap_rings(path, rings, report):
+    """Each tap ring must tint the picture where and when it is drawn.
+
+    rings: {"sequence", "start_number", "width", "frames", "events"} from the render.
+    The ring's own alpha at the contact frame weights a comparison between the
+    contact frame and a frame without this ring (just before it starts, or just
+    after it ends). The expected change is what that ring's tint would do to the
+    reference picture; when the tint is too close to the screen under it (a white
+    ring on a white app) the ring is reported as unverifiable, not as missing.
+    A change in the app under the ring can hide a missing ring; a ring that is
+    present but off target fails like a missing one.
+    """
+    from PIL import Image
+    results = []
+    width, total = rings["width"], rings["frames"]
+    for event in rings["events"]:
+        contact, start, end = event["anchor_output_frame"], event["tap_start_frame"], event["tap_end_frame"]
+        reference = start - 1 if start >= 1 else end + 1 if end + 1 < total else None
+        result = {"id": event.get("id"), "contact_frame": contact, "reference_frame": reference}
+        results.append(result)
+        if reference is None:
+            result["status"] = "unverifiable"
+            continue
+        index = rings.get("start_number", 0) + event["source_frame_map"][contact - start]
+        with Image.open(rings["sequence"] % index) as image:
+            alpha = image.getchannel("A").resize((width, width), Image.BILINEAR)
+        alpha = np.asarray(alpha, np.float32) / 255
+        x, y = event["canvas_point"]
+        left, top = round(x - width / 2), round(y - width / 2)
+        box = [max(0, left), max(0, top), min(1920, left + width), min(1920, top + width)]
+        alpha = alpha[box[1] - top:box[3] - top, box[0] - left:box[2] - left]
+        frames = [_decode_rgb_crop(path, n, box) for n in (contact, reference)]
+        if any(frame is None for frame in frames) or alpha.sum() <= 0:
+            _fail(report, "tap_ring_frames_missing", "The tap ring frames are outside the video", event=event.get("id"))
+            result["status"] = "failed"
+            continue
+        drawn, plain = frames
+        weight = alpha[..., None]
+        tint = np.asarray(event.get("tint_rgb", [255, 255, 255]), np.float32)
+        observed = float((weight * np.abs(drawn - plain)).sum() / (3 * alpha.sum()))
+        expected = float((weight * weight * np.abs(tint - plain)).sum() / (3 * alpha.sum()))
+        result.update(observed_change=round(observed, 2), expected_change=round(expected, 2))
+        if expected < RING_MIN_EXPECTED:
+            result["status"] = "unverifiable"
+        elif observed < RING_MIN_SHARE * expected:
+            result["status"] = "failed"
+            _fail(report, "tap_ring_invisible", "A tap ring does not show at its contact frame",
+                  event=event.get("id"), observed_change=result["observed_change"],
+                  expected_change=result["expected_change"])
+        else:
+            result["status"] = "passed"
+    report["tap_rings"] = results
     report["passed"] = not report["failures"]
     return report
 
@@ -276,11 +418,24 @@ def main():
     parser.add_argument("--report", type=Path)
     parser.add_argument("--cadence-only", action="store_true",
                         help="Check frame cadence only for comparisons and technical previews")
+    parser.add_argument("--render-report", type=Path,
+                        help="compose_pilot render report; also checks that every tap ring shows")
     args = parser.parse_args()
     if args.report and (args.render.resolve() == args.report.resolve() or
                         (args.report.exists() and args.render.exists() and args.report.samefile(args.render))):
         parser.error("The report path points to the video. Choose a separate JSON file.")
     report = (audit_render if args.cadence_only else audit_delivery)(args.render)
+    if args.render_report and not args.cadence_only:
+        render = json.loads(args.render_report.read_text())
+        if render.get("quality", {}).get("output_sha256") not in (None, report.get("output_sha256")):
+            _fail(report, "render_report_mismatch", "The render report belongs to another video")
+        elif render.get("events"):
+            try:
+                audit_tap_rings(args.render, {**render["tap"], "frames": report.get("decoded_frame_count") or 0,
+                                              "events": render["events"]}, report)
+            except (OSError, KeyError, ValueError, subprocess.SubprocessError) as error:
+                _fail(report, "tap_ring_audit_error", "Could not check the tap rings", details=str(error)[:1500])
+        report["passed"] = not report["failures"]
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+"\n"
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)

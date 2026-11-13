@@ -55,6 +55,30 @@ def probe(path):
     ]))
 
 
+# simctl recordings can carry duplicate PTS values; ffmpeg's decoder then falls
+# back to DTS for the rest of the stream and shifts frames by up to seconds.
+# Ignoring DTS keeps every decoded frame on its own presentation time.
+DECODE_BY_PTS = ["-fflags", "+igndts"]
+
+
+def check_frame_times(path):
+    """Fail unless every decoded frame keeps its presentation time, in order."""
+    rows = subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                                    "-show_entries", "frame=pts_time", "-of", "csv=p=0", str(path)], text=True).split()
+    previous, frames = None, 0
+    for row in rows:
+        value = row.strip(",")
+        if not value or value == "N/A":
+            raise ValueError(f"Frame {frames} of {path} has no presentation time; record the take again")
+        pts = float(value)
+        if previous is not None and pts < previous:
+            raise ValueError(f"Frame times of {path} go backwards at frame {frames}; record the take again")
+        previous, frames = pts, frames + 1
+    if not frames:
+        raise ValueError(f"{path} has no video frames")
+    return {"frames": frames, "decode": "presentation timestamps (DTS ignored)", "status": "passed"}
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:

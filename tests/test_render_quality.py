@@ -32,7 +32,12 @@ def probe_fixture(fps=60, count=60, offset=0):
 
 
 class RenderQualityTests(unittest.TestCase):
+    """Timing and duration from mocked ffprobe; media checks are tested on real files below."""
+
     def setUp(self):
+        media = mock.patch.object(QUALITY, "_audit_media")
+        media.start()
+        self.addCleanup(media.stop)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.path = Path(temporary.name)/"arbitrary-final-name.mov"
@@ -211,6 +216,91 @@ class RenderQualityTests(unittest.TestCase):
         error = QUALITY.RenderQualityError(report)
         self.assertIn("at least 600 frames", str(error))
         self.assertNotIn("failed 60 fps validation", str(error))
+
+
+
+@unittest.skipUnless(__import__("shutil").which("ffmpeg"), "ffmpeg required")
+class MediaChecksTests(unittest.TestCase):
+    """Delivery format, blank/static content and tap rings on real encoded files."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+
+    def encode(self, name, source, *options, audio=False):
+        path = self.root / name
+        command = ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", source]
+        if audio:
+            command += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono", "-shortest"]
+        command += [*options, str(path)]
+        subprocess.run(command, check=True)
+        return path
+
+    def media(self, path):
+        report = {"failures": []}
+        QUALITY._audit_media(path, report)
+        return report, {failure["code"] for failure in report["failures"]}
+
+    def test_moving_h264_passes(self):
+        path = self.encode("ok.mp4", "testsrc2=size=128x128:rate=60:duration=1", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        report, codes = self.media(path)
+        self.assertEqual(codes, set())
+        self.assertGreater(report["content"]["changing_frames"], 0)
+
+    def test_blank_and_static_pictures_fail(self):
+        black = self.encode("black.mp4", "color=black:size=128x128:rate=60:duration=1", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        static = self.encode("static.mp4", "color=gray:size=128x128:rate=60:duration=1",
+                             "-vf", "drawbox=x=10:y=10:w=50:h=50:color=white:t=fill", "-pix_fmt", "yuv420p", "-c:v", "libx264")
+        self.assertIn("content_blank", self.media(black)[1])
+        self.assertIn("content_static", self.media(static)[1])
+
+    def test_wrong_delivery_format_fails(self):
+        source = "testsrc2=size=128x128:rate=60:duration=1"
+        cases = {
+            "delivery_codec": self.encode("444.mp4", source, "-pix_fmt", "yuv444p", "-c:v", "libx264"),
+            "delivery_pixel_aspect": self.encode("sar.mp4", source, "-vf", "setsar=2", "-pix_fmt", "yuv420p", "-c:v", "libx264"),
+            "delivery_extra_streams": self.encode("audio.mp4", source, "-pix_fmt", "yuv420p", "-c:v", "libx264", audio=True),
+            "delivery_start_time": self.encode("late.mp4", source, "-output_ts_offset", "5", "-pix_fmt", "yuv420p", "-c:v", "libx264"),
+        }
+        for code, path in cases.items():
+            with self.subTest(code=code):
+                self.assertIn(code, self.media(path)[1])
+
+    def ring_video(self, name, background, start=10):
+        """A plain screen with the bundled ring sequence drawn at (500, 500) from frame `start`."""
+        sequence = str(Path(QUALITY.__file__).resolve().parents[1] / "assets/tap/native/tap_%05d.png")
+        path = self.root / name
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"color={background}:size=1920x1920:rate=60:duration=1.2",
+                        "-framerate", "60", "-start_number", "0", "-i", sequence, "-filter_complex",
+                        f"[1:v]setpts=PTS+{start}/(60*TB)[ring];[0:v][ring]overlay=x=500-540:y=500-540:eof_action=pass",
+                        "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "12", str(path)], check=True)
+        return path, sequence
+
+    def rings(self, sequence, point, start=10):
+        event = {"id": "tap", "tap_start_frame": start, "anchor_output_frame": start + 25, "tap_end_frame": start + 40,
+                 "canvas_point": point, "tint_rgb": [49, 123, 255], "source_frame_map": list(range(41))}
+        return {"sequence": sequence, "start_number": 0, "width": 1080, "frames": 72, "events": [event]}
+
+    def test_tap_ring_is_found_where_it_is_drawn(self):
+        path, sequence = self.ring_video("ring.mp4", "gray")
+        shown = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500]), {"failures": []})
+        self.assertTrue(shown["passed"])
+        self.assertEqual(shown["tap_rings"][0]["status"], "passed")
+        elsewhere = QUALITY.audit_tap_rings(path, self.rings(sequence, [1400, 1400]), {"failures": []})
+        self.assertEqual([f["code"] for f in elsewhere["failures"]], ["tap_ring_invisible"])
+
+    def test_ring_matching_the_screen_is_unverifiable_not_missing(self):
+        path, sequence = self.ring_video("same.mp4", "0x317BFF")
+        result = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500]), {"failures": []})
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tap_rings"][0]["status"], "unverifiable")
+
+    def test_ring_at_the_first_frame_is_compared_with_the_frame_after_it(self):
+        path, sequence = self.ring_video("first.mp4", "gray", start=0)
+        result = QUALITY.audit_tap_rings(path, self.rings(sequence, [500, 500], start=0), {"failures": []})
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["tap_rings"][0]["reference_frame"], 41)
 
 
 if __name__ == "__main__":
