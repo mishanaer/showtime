@@ -149,6 +149,8 @@ def use_layout(config, name):
         product = json.loads((ROOT / "profiles/telegram-product.json").read_text())
         result["device"].update(product["layouts"]["reference-crop"])
         scale = result.get("layout_scale", 1)
+        if type(scale) not in (int, float) or not 1 <= scale <= 3:
+            raise ValueError("layout_scale must be a number from 1 to 3")
         if name != "full" and scale != 1:
             # Enlarge the phone around the canvas centre; the canvas still crops it.
             device = result["device"]
