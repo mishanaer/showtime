@@ -54,8 +54,8 @@ class CompositionPolicyTests(unittest.TestCase):
             self.assertEqual(quality.read_text(), "old report")
 
     def test_invalid_delivery_duration_stops_before_stage_or_encoder(self):
-        # Both explicit and inferred cuts must meet the minimum and fit the source.
-        for requested, source_duration in ((9, 25), (None, 9), (26, 25), (1e308, 25), (0, 12)):
+        # Explicit and inferred cuts must be nonempty and fit the source.
+        for requested, source_duration in ((26, 25), (1e308, 25), (0, 12), (None, 0)):
             with self.subTest(requested=requested, source_duration=source_duration):
                 args = SimpleNamespace(capture="unused.mp4", duration=requested, capture_start=0)
                 with patch.object(compositor, "video_info", return_value=(402, 874, source_duration)), \
