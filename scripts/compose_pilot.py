@@ -636,7 +636,7 @@ def main():
     p.add_argument("--tap-width", type=int)
     p.add_argument("--tap-blur", type=float, help="Must be 0; use tap-soften.py for premultiplied-alpha spatial blur")
     p.add_argument("--capture-start", type=float, default=0)
-    p.add_argument("--duration", type=float, help="Final duration in seconds including the loop (minimum 10). Defaults to the remaining capture.")
+    p.add_argument("--duration", type=float, help="Final duration in seconds including the loop. Defaults to the remaining capture.")
     p.add_argument("--output", required=True)
     p.add_argument("--crf", type=int, default=18)
     p.add_argument("--preset", default="fast")

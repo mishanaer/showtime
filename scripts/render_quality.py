@@ -25,7 +25,7 @@ TARGET_FPS = Fraction(60)
 FRAME_PERIOD = 1 / TARGET_FPS
 TIMESTAMP_TOLERANCE = Fraction(1, 2000)  # 0.5 ms, including muxer rounding.
 RATE_TOLERANCE = Fraction(1, 200)  # 0.005 fps; 59.94 is not exact 60.
-DELIVERY_MIN_FRAMES = 600
+DELIVERY_MIN_FRAMES = 1  # the scenario sets the length; only an empty video fails
 
 
 class RenderQualityError(RuntimeError):
@@ -238,7 +238,7 @@ def delivery_frame_count(duration):
         raise ValueError("Enter a positive finite duration in seconds")
     frames = round(seconds * TARGET_FPS)
     if frames < DELIVERY_MIN_FRAMES:
-        raise ValueError("The final video must last at least 10 seconds (600 frames at 60 fps).")
+        raise ValueError("The final video must contain at least one frame.")
     return frames
 
 
@@ -247,7 +247,7 @@ def audit_delivery(path):
     report = audit_render(path)
     report["scope"] = "product_delivery"
     report["delivery_policy"] = {
-        "minimum_seconds": DELIVERY_MIN_FRAMES // 60, "maximum_seconds": None,
+        "minimum_seconds": None, "maximum_seconds": None,
         "minimum_decoded_frames": DELIVERY_MIN_FRAMES,
         "maximum_decoded_frames": None,
         "target_fps": "60/1", "boundaries_inclusive": True,
@@ -267,7 +267,7 @@ def audit_delivery(path):
     }
     if not frame_count_valid:
         _fail(report, "delivery_frame_count_out_of_range",
-              "The final video must contain at least 600 frames at 60 fps (10 seconds)",
+              "The final video must contain at least one frame",
               actual_decoded_frames=frames, minimum=DELIVERY_MIN_FRAMES, maximum=None)
     stream = report.get("stream", {})
     if stream and (stream.get("width"), stream.get("height")) != (1920, 1920):
