@@ -98,7 +98,7 @@ def check_preparation(manifest_path):
         resolved = (manifest_path.parent / path).resolve()
         if declared.get(resolved) != digest or file_sha256(resolved) != digest:
             raise ValueError("The geometry file is missing from files or has changed")
-        expected_config = {**product, "device": {**product["device"], **phone}}
+        expected_config = {**product, "device": {**product["device"], **phone}, "layout_scale": shot.get("layout_scale", 1)}
         expected = geometry(use_layout(expected_config, shot["layout"]))
         actual = _read_json(resolved)
         actual = actual.get("geometry", actual)

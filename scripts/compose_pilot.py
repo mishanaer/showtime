@@ -148,6 +148,14 @@ def use_layout(config, name):
         # Resolve product presets from the framework, never from a run override.
         product = json.loads((ROOT / "profiles/telegram-product.json").read_text())
         result["device"].update(product["layouts"]["reference-crop"])
+        scale = result.get("layout_scale", 1)
+        if type(scale) not in (int, float) or not 1 <= scale <= 3:
+            raise ValueError("layout_scale must be a number from 1 to 3")
+        if name != "full" and scale != 1:
+            # Enlarge the phone around the canvas centre; the canvas still crops it.
+            device = result["device"]
+            device["width"] = round(device["width"] * scale)
+            device["left"] = (result["canvas"]["width"] - device["width"]) // 2
         if name == "crop-bottom":
             device = result["device"]
             device["top"] = result["canvas"]["height"] - geometry(result)["device"][3] - device["top"]

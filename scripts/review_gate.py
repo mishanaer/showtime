@@ -281,8 +281,8 @@ def _prepared_snapshot(path, scenario):
     from compose_pilot import load_config
     config = load_config(path.parent / profile["path"])
     shots = manifest["content"]["preparation"]["framing"]
-    if not all((shot["layout"], shot["device_id"]) == (config["layout"], config["device"]["id"])
-               for shot in shots):
+    if not all((shot["layout"], shot["device_id"], shot.get("layout_scale", 1))
+               == (config["layout"], config["device"]["id"], config.get("layout_scale", 1)) for shot in shots):
         raise ReviewGateError("The profile framing or phone differs from the storyboard")
     if any(Path(frame["file"]).suffix.lower() not in MEDIA for frame in manifest["content"]["storyboard"]):
         raise ReviewGateError("Storyboard frames must be images or videos")
